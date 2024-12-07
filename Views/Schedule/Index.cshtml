@@ -1,0 +1,22 @@
+@model IEnumerable<Project>
+@{
+    ViewData["Title"] = "Test Schedules";
+}
+
+<h2>Test Projects</h2>
+
+<div class="row">
+    @foreach (var project in Model)
+    {
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@project.Name</h5>
+                    <p class="card-text">@project.Path</p>
+                    <a asp-action="Create" asp-route-projectId="@project.Id" 
+                       class="btn btn-primary">Schedule Tests</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>

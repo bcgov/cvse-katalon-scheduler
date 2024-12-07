@@ -1,0 +1,12 @@
+@{
+    ViewData["Title"] = "Error";
+    Layout = "_Layout";
+}
+
+<h1>Error</h1>
+<p>An error occurred while processing your request.</p>
+
+@if (!string.IsNullOrEmpty(ViewData["ErrorMessage"]?.ToString()))
+{
+    <p class="text-danger">@ViewData["ErrorMessage"]</p>
+}

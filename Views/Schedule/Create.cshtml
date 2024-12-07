@@ -1,0 +1,48 @@
+@using KatalonScheduler.Models.ViewModels
+@model ScheduleTestViewModel
+@{
+    ViewData["Title"] = "Schedule Test";
+}
+
+<h2>Schedule Test for @Model.ProjectName</h2>
+
+<form asp-action="Create" method="post">
+    <input type="hidden" asp-for="ProjectId" />
+    <input type="hidden" asp-for="ProjectName" />
+
+    <div class="form-group">
+        <label asp-for="TestCaseId">Test Case</label>
+        <select asp-for="TestCaseId" class="form-control">
+            @foreach (var test in Model.TestCases)
+            {
+                <option value="@test.Id">@test.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Hour">Hour (0-23)</label>
+        <input asp-for="Hour" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Minute">Minute (0-59)</label>
+        <input asp-for="Minute" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="DayOfWeek">Day of Week (0-6, * for all)</label>
+        <select asp-for="DayOfWeek" class="form-control">
+            <option value="*">Every day</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+            <option value="0">Sunday</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Schedule Test</button>
+</form>
