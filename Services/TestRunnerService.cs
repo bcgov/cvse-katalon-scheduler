@@ -1,8 +1,11 @@
 using System.Diagnostics;
-using KatalonScheduler.Configuration;
-using KatalonScheduler.Models.Domain;
-using KatalonScheduler.Services.Interfaces;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using KatalonScheduler.Configuration;
+using KatalonScheduler.Services.Interfaces;
+using KatalonScheduler.Models.Domain;
+using KatalonScheduler.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace KatalonScheduler.Services;
 
@@ -10,39 +13,82 @@ public class TestRunnerService : ITestRunnerService
 {
     private readonly KatalonOptions _options;
     private readonly ILogger<TestRunnerService> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public TestRunnerService(IOptions<KatalonOptions> options, ILogger<TestRunnerService> logger)
+    public TestRunnerService(
+        IOptions<KatalonOptions> options,
+        ILogger<TestRunnerService> logger,
+        ApplicationDbContext context)
     {
         _options = options.Value;
         _logger = logger;
+        _context = context;
     }
 
     public async Task<ExecutionResult> RunTestAsync(string projectPath, string testPath, CancellationToken cancellationToken = default)
     {
-        var startInfo = new ProcessStartInfo
+        // Validate Katalon runtime exists
+        if (!File.Exists(_options.KatalonPath))
         {
-            FileName = _options.RuntimeEnginePath,
-            Arguments = $"-projectPath \"{projectPath}\" -testSuitePath \"{testPath}\" -noSplash -runMode=console",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+            _logger.LogError("Katalon runtime not found at: {Path}", _options.KatalonPath);
+            return new ExecutionResult
+            {
+                Success = false,
+                Message = $"Katalon runtime not found at: {_options.KatalonPath}"
+            };
+        }
 
+        var projectDirectory = Path.GetDirectoryName(projectPath);
+        if (string.IsNullOrEmpty(projectDirectory))
+        {
+            _logger.LogError("Invalid project path: {Path}", projectPath);
+            return new ExecutionResult
+            {
+                Success = false,
+                Message = "Invalid project path"
+            };
+        }
+
+        // Find the scheduled test record
+        var scheduledTest = await _context.ScheduledTests
+            .FirstOrDefaultAsync(st => st.TestSuitePath == testPath);
         try
         {
-            using var process = new Process { StartInfo = startInfo };
-            var output = new List<string>();
-            var errors = new List<string>();
+            // Build arguments with project-specific values
+            var arguments = new[]
+            {
+        "-noSplash",
+        "-runMode=console",
+        $"-projectPath=\"{projectPath}\"",
+        "-retry=0",
+        $"-testSuitePath=\"{testPath}\"",
+        "-browserType=\"Chrome\"",
+        $"-executionProfile=\"{_options.ExecutionProfile}\"",
+        $"-apiKey=\"{_options.ApiKey}\"",
+        $"-testOpsProjectId={projectPath.Split('\\').Last().Split('_').First()}",
+        "--config",
+        "-proxy.auth.option=NO_PROXY",
+        "-proxy.system.option=NO_PROXY",
+        "-proxy.system.applyToDesiredCapabilities=true",
+        "-webui.autoUpdateDrivers=true"
+    };
 
-            process.OutputDataReceived += (sender, e) => 
+            _logger.LogInformation("Running Katalon test with arguments: {Args}", string.Join(" ", arguments));
+
+            var startInfo = new ProcessStartInfo
             {
-                if (e.Data != null) output.Add(e.Data);
+                FileName = _options.KatalonPath,
+                Arguments = string.Join(" ", arguments),
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = projectDirectory
             };
-            process.ErrorDataReceived += (sender, e) => 
-            {
-                if (e.Data != null) errors.Add(e.Data);
-            };
+
+            using var process = new Process { StartInfo = startInfo };
+            process.OutputDataReceived += (sender, e) => _logger.LogInformation(e.Data);
+            process.ErrorDataReceived += (sender, e) => _logger.LogError(e.Data);
 
             process.Start();
             process.BeginOutputReadLine();
@@ -50,16 +96,31 @@ public class TestRunnerService : ITestRunnerService
 
             await process.WaitForExitAsync(cancellationToken);
 
+            // Update the scheduled test status
+            if (scheduledTest != null)
+            {
+                scheduledTest.LastRun = DateTime.UtcNow;
+                scheduledTest.LastRunStatus = process.ExitCode == 0 ? "Success" : "Failed";
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
             return new ExecutionResult
             {
                 Success = process.ExitCode == 0,
-                Message = process.ExitCode == 0 ? "Test executed successfully" : "Test execution failed",
-                LogOutput = string.Join(Environment.NewLine, output.Concat(errors))
+                Message = process.ExitCode == 0 ? "Test completed successfully" : "Test failed"
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error running Katalon test");
+            // Update status on error
+            if (scheduledTest != null)
+            {
+                scheduledTest.LastRun = DateTime.UtcNow;
+                scheduledTest.LastRunStatus = "Failed";
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            _logger.LogError(ex, "Error running test");
             return new ExecutionResult
             {
                 Success = false,
@@ -70,28 +131,6 @@ public class TestRunnerService : ITestRunnerService
 
     public async Task<bool> ValidateKatalonRuntimeAsync()
     {
-        if (!File.Exists(_options.RuntimeEnginePath))
-            return false;
-
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = _options.RuntimeEnginePath,
-                Arguments = "-version",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            await process!.WaitForExitAsync();
-            return process.ExitCode == 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error validating Katalon Runtime");
-            return false;
-        }
+        return await Task.Run(() => File.Exists(_options.KatalonPath));
     }
 }

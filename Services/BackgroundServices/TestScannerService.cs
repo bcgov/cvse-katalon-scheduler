@@ -18,6 +18,9 @@ public class TestScannerService : BackgroundService
         _scopeFactory = scopeFactory;
         _options = options.Value;
         _logger = logger;
+
+          _logger.LogInformation("TestScannerService initialized with scan interval: {ScanInterval} minutes", 
+        _options.ScanIntervalMinutes);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

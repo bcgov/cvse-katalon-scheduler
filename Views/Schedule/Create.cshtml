@@ -1,48 +1,58 @@
-@using KatalonScheduler.Models.ViewModels
+
 @model ScheduleTestViewModel
 @{
     ViewData["Title"] = "Schedule Test";
 }
 
-<h2>Schedule Test for @Model.ProjectName</h2>
-
-<form asp-action="Create" method="post">
-    <input type="hidden" asp-for="ProjectId" />
-    <input type="hidden" asp-for="ProjectName" />
-
-    <div class="form-group">
-        <label asp-for="TestCaseId">Test Case</label>
-        <select asp-for="TestCaseId" class="form-control">
-            @foreach (var test in Model.TestCases)
-            {
-                <option value="@test.Id">@test.Name</option>
-            }
-        </select>
+<div class="card">
+    <div class="card-header">
+        <h2>Schedule Test for @Model.ProjectName</h2>
     </div>
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            <input type="hidden" asp-for="ProjectId" />
+            <input type="hidden" asp-for="ProjectName" />
 
-    <div class="form-group">
-        <label asp-for="Hour">Hour (0-23)</label>
-        <input asp-for="Hour" class="form-control" />
+            <!-- Test Suite Selection -->
+            <div class="mb-3">
+                <label asp-for="SelectedTestSuite" class="form-label">Test Suite</label>
+                <select asp-for="SelectedTestSuite" 
+                        asp-items="Model.TestSuites" 
+                        class="form-select"
+                        onchange="updateTestCases(this.value)">
+                    <option value="">Select Test Suite...</option>
+                </select>
+            </div>
+
+            <!-- Schedule Settings -->
+            <div class="row">
+                <div class="col-md-4">
+                    <label asp-for="Hour" class="form-label">Hour (0-23)</label>
+                    <input asp-for="Hour" class="form-control" type="number" min="0" max="23" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="Minute" class="form-label">Minute (0-59)</label>
+                    <input asp-for="Minute" class="form-control" type="number" min="0" max="59" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="DayOfWeek" class="form-label">Day of Week</label>
+                    <select asp-for="DayOfWeek" class="form-select">
+                        <option value="*">Every day</option>
+                        <option value="1">Mon</option>
+                        <option value="2">Tue</option>
+                        <option value="3">Wed</option>
+                        <option value="4">Thu</option>
+                        <option value="5">Fri</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Schedule Test</button>
+                <a asp-action="Projects" class="btn btn-secondary">Back to Projects</a>
+            </div>
+        </form>
     </div>
-
-    <div class="form-group">
-        <label asp-for="Minute">Minute (0-59)</label>
-        <input asp-for="Minute" class="form-control" />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="DayOfWeek">Day of Week (0-6, * for all)</label>
-        <select asp-for="DayOfWeek" class="form-control">
-            <option value="*">Every day</option>
-            <option value="1">Monday</option>
-            <option value="2">Tuesday</option>
-            <option value="3">Wednesday</option>
-            <option value="4">Thursday</option>
-            <option value="5">Friday</option>
-            <option value="6">Saturday</option>
-            <option value="0">Sunday</option>
-        </select>
-    </div>
-
-    <button type="submit" class="btn btn-primary mt-3">Schedule Test</button>
-</form>
+</div>

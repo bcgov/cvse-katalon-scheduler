@@ -1,22 +1,820 @@
-@model IEnumerable<Project>
+@model IEnumerable<TestSuiteGroupViewModel>
 @{
-    ViewData["Title"] = "Test Schedules";
+    ViewData["Title"] = "Test Schedule";
 }
 
-<h2>Test Projects</h2>
+@inject IConfiguration Configuration
+@{
+    var enableTestCases = Configuration.GetValue<bool>("FeatureFlags:EnableTestCases");
+}
 
-<div class="row">
-    @foreach (var project in Model)
-    {
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">@project.Name</h5>
-                    <p class="card-text">@project.Path</p>
-                    <a asp-action="Create" asp-route-projectId="@project.Id" 
-                       class="btn btn-primary">Schedule Tests</a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Test Schedule</h2>
+    <div>
+        <button class="btn btn-success me-2" onclick="toggleAddTestSection()">Schedule New Test</button>
+        <a asp-action="Projects" class="btn btn-primary">Manage Projects</a>
+    </div>
+</div>
+
+<!-- Schedule New Test Section -->
+<div id="addTestSection" class="card mb-4" style="display: none;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Schedule New Test</h5>
+        <button type="button" class="btn btn-outline-secondary" onclick="resetScheduleForm()">Reset</button>
+    </div>
+    <div class="card-body">
+        <form id="scheduleForm" asp-action="Create" method="post">
+            <input type="hidden" id="tempTestSuites" name="TempTestSuites" value="" />
+            <input type="hidden" id="tempTestCases" name="TempTestCases" value="" />
+            <input type="hidden" id="projectId" name="ProjectId" value="" />
+            <input type="hidden" id="selectedTestSuite" name="SelectedTestSuite" value="" />
+            <input type="hidden" id="projectName" name="ProjectName" value="" />
+            <input type="hidden" id="selectedProfile" name="SelectedProfile" value="" />
+
+            <div class="row mb-3">
+                <!-- Project Selection -->
+                <div class="col-md-4">
+                    <label class="form-label">Select Project</label>
+                    <select id="projectSelect" class="form-select"
+                        onchange="loadTestSuites(this.value); loadProfiles(this.value)" required>
+                        <option value="">Choose a project...</option>
+                    </select>
+                </div>
+
+                <!-- Test Suite Selection -->
+                <div class="col-md-4">
+                    <label class="form-label">Select Test Suite</label>
+                    <select id="testSuiteSelect" class="form-select"
+                        onchange="@(enableTestCases ? "loadTestCases(this.value)" : "")" disabled required>
+                        <option value="">Choose a test suite...</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Select Profile</label>
+                    <select id="profileSelect" class="form-select" disabled required>
+                        <option value="">Choose a profile...</option>
+                    </select>
+                </div>
+
+                <!-- Test Case Selection -->
+                @if (enableTestCases)
+                {
+                    <div class="col-md-4">
+                        <label class="form-label">Select Test Case</label>
+                        <select id="testCaseSelect" class="form-select" disabled required>
+                            <option value="">Choose a test case...</option>
+                        </select>
+                    </div>
+                }
+            </div>
+
+            <!-- Schedule Settings -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Hour (0-23)</label>
+                    <input type="number" id="hour" class="form-control" min="0" max="23" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Minute (0-59)</label>
+                    <input type="number" id="minute" class="form-control" min="0" max="59" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Days</label>
+                    <div class="btn-group w-100" role="group">
+                        @foreach (var day in new[] { "Mon", "Tue", "Wed", "Thu", "Fri" })
+                        {
+                            <input type="checkbox" class="btn-check" name="days" id="day-@day" value="@day">
+                            <label class="btn btn-outline-primary" for="day-@day">@day</label>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add after the project/suite/case selection dropdowns -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-outline-secondary manual-add-btn"
+                        onclick="showManualTestSuiteModal()">
+                        Add Manual Test Suite
+                    </button>
+                    @if (enableTestCases)
+                    {
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2"
+                            onclick="showManualTestCaseModal()">
+                            Add Manual Test Case
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Schedule Test</button>
+            </div>
+
+        </form>
+        <!-- Add at the bottom of the page -->
+        <!-- Manual Test Suite Modal -->
+        <div class="modal fade" id="manualTestSuiteModal" tabindex="-1" role="dialog"
+            aria-labelledby="manualTestSuiteModalLabel">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="manualTestSuiteModalLabel">Add Manual Test Suite</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="manualTestSuiteForm">
+                            <div class="mb-3">
+                                <label class="form-label">Project</label>
+                                <select id="manualProjectSelect" name="projectId" class="form-select" required></select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Suite Name</label>
+                                <input type="text" id="manualSuiteName" name="suiteName" class="form-control"
+                                    required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">File Path</label>
+                                <input type="text" id="manualSuiteFilePath" name="filePath" class="form-control"
+                                    required />
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveManualTestSuite()">Save</button>
+                    </div>
                 </div>
             </div>
         </div>
-    }
+
+        <!-- Manual Test Case Modal -->
+        <div class="modal fade" id="manualTestCaseModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Manual Test Case</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="manualTestCaseForm">
+                            <div class="mb-3">
+                                <label class="form-label">Test Suite</label>
+                                <select id="manualSuiteSelect" name="testSuiteId" class="form-select" required></select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Case Name</label>
+                                <input type="text" id="manualCaseName" name="caseName" class="form-control" required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">File Path</label>
+                                <input type="text" id="manualCaseFilePath" name="filePath" class="form-control"
+                                    required />
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveManualTestCase()">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Test Schedules</h5>
+    </div>
+    <div id="scheduledTestsContainer">
+        <!-- Content will be loaded dynamically -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let projectSelect = document.getElementById('projectSelect');
+        let testSuiteSelect = document.getElementById('testSuiteSelect');
+        let testCaseSelect = document.getElementById('testCaseSelect');
+        let testSuiteModal, testCaseModal, scheduledTestsTable;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            projectSelect = document.getElementById('projectSelect');
+            testSuiteSelect = document.getElementById('testSuiteSelect');
+            if (@Json.Serialize(enableTestCases)) {
+                testCaseSelect = document.getElementById('testCaseSelect');
+            }
+            scheduledTestsTable = document.querySelector('#scheduledTestsTable tbody');
+
+            // Initialize modals
+            testSuiteModal = new bootstrap.Modal(document.getElementById('manualTestSuiteModal'));
+            if (@Json.Serialize(enableTestCases)) {
+                testCaseModal = new bootstrap.Modal(document.getElementById('manualTestCaseModal'));
+            }
+
+            document.getElementById('scheduleForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const projectId = document.getElementById('projectSelect').value;
+                const projectName = projectSelect.options[projectSelect.selectedIndex].text;
+                const mode = this.dataset.mode || 'create';
+
+                // Get the selected test suite value
+                const testSuiteSelect = document.getElementById('testSuiteSelect');
+                const selectedValue = testSuiteSelect.value;
+                let selectedTestSuite;
+
+                // Handle temporary or existing test suite
+                if (selectedValue.startsWith('temp_')) {
+                    const tempSuites = JSON.parse(document.getElementById('tempTestSuites').value || '[]');
+                    const suiteName = selectedValue.replace('temp_', '');
+                    selectedTestSuite = tempSuites.find(s => s.name === suiteName);
+
+                    if (!selectedTestSuite) {
+                        alert('Selected temporary test suite not found');
+                        return;
+                    }
+                }
+
+                // Validate profile selection
+                const selectedProfile = document.getElementById('profileSelect').value;
+                if (!selectedProfile) {
+                    alert('Please select a profile');
+                    return;
+                }
+
+                // Map days to numbers
+                const dayMap = { Mon: '1', Tue: '2', Wed: '3', Thu: '4', Fri: '5' };
+                const selectedDays = Array.from(document.querySelectorAll('input[name="days"]:checked'))
+                    .map(checkbox => dayMap[checkbox.value]);
+
+                // If no days selected, use "*" for every day
+                if (selectedDays.length === 0) {
+                    selectedDays.push('*');
+                }
+
+                try {
+                    const endpoint = mode === 'edit'
+                        ? `/Schedule/Update/${this.dataset.testSuiteId}`
+                        : '/Schedule/Create';
+
+                    for (const dayValue of selectedDays) {
+                        const formData = new FormData();
+                        formData.append('ProjectId', projectId);
+                        formData.append('ProjectName', projectName);
+
+                        // Add test suite data
+                        if (selectedTestSuite) {
+                            formData.append('TempTestSuites', document.getElementById('tempTestSuites').value);
+                            formData.append('SelectedTestSuite', selectedTestSuite.filePath);
+                        } else {
+                            formData.append('SelectedTestSuite', selectedValue);
+                        }
+
+                        formData.append('SelectedProfile', selectedProfile);
+                        formData.append('Hour', document.getElementById('hour').value);
+                        formData.append('Minute', document.getElementById('minute').value);
+                        formData.append('DayOfWeek', dayValue);
+
+                        const response = await fetch(endpoint, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('Server error:', errorText);
+                            throw new Error(`Failed to ${mode} test for day: ${dayValue}`);
+                        }
+                    }
+
+                    // Reset form and reload data
+                    this.reset();
+                    this.dataset.mode = '';
+                    this.dataset.testSuiteId = '';
+                    document.getElementById('addTestSection').style.display = 'none';
+                    await loadScheduledTests();
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert(error.message || `Error ${mode}ing test`);
+                }
+            });
+        });
+
+        function toggleAddTestSection() {
+            const section = document.getElementById('addTestSection');
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+
+            if (section.style.display === 'block') {
+                loadProjects();
+            }
+        }
+
+
+
+        async function loadScheduledTests() {
+            try {
+
+                const dayNumberToName = {
+                    '1': 'Mon',
+                    '2': 'Tue',
+                    '3': 'Wed',
+                    '4': 'Thu',
+                    '5': 'Fri',
+                    '0': 'Sun',
+                    '6': 'Sat'
+                };
+                const response = await fetch('/Schedule/GetScheduledTests');
+                if (!response.ok) throw new Error('Failed to fetch scheduled tests');
+
+                const groups = await response.json();
+                console.log('Received groups:', groups);
+
+                const container = document.querySelector('#scheduledTestsContainer');
+
+                if (!groups || groups.length === 0) {
+                    container.innerHTML = `
+                            <div class="card">
+                                <div class="card-body text-center">No scheduled tests found</div>
+                            </div>`;
+                    return;
+                }
+
+                container.innerHTML = groups.map(group => `
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    ${group.testSuiteName}
+                                </h6>
+                                <small class="text-muted">${group.testSuitePath}</small>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-striped mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Project</th>
+                                            <th>Profile</th>
+                                            <th>Schedule</th>
+                                            <th>Status</th>
+                                            <th>Last Run</th>
+                                            <th>Success/Failuer</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+
+                                <tbody>
+                                    ${group.scheduledRuns.map(test => {
+                                        // Extract day number from schedule
+                                        const scheduleMatch = test.schedule.match(/(\d{2}:\d{2}) on (\d)/);
+                                        const time = scheduleMatch ? scheduleMatch[1] : '';
+                                        const dayNum = scheduleMatch ? scheduleMatch[2] : '';
+                                        const dayName = dayNumberToName[dayNum] || dayNum;
+
+                                        return `
+                                            <tr class="${test.isActive ? 'table-success' : ''}">
+                                                <td>${test.projectName}</td>
+                                                <td>${test.selectedProfile}</td>
+                                                <td>${time} on ${dayName}</td>
+                                                <td>${test.isActive ? 'Active' : 'Inactive'}</td>
+                                                <td>${test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}</td>
+                                                <td>
+                                                    ${test.lastRunStatus ? 
+                                                        `<span class="badge ${test.lastRunStatus === 'Success' ? 'bg-success' : 'bg-danger'}">
+                                                            ${test.lastRunStatus}
+                                                        </span>` : 
+                                                        'N/A'}
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button class="btn btn-sm btn-outline-warning" 
+                                                                onclick="toggleSchedule('${test.jobId}')">
+                                                            ${test.isActive ? 'Pause' : 'Resume'}
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" 
+                                                                onclick="deleteSchedule('${test.jobId}')">
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>`;
+                                    }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading scheduled tests');
+            }
+        }
+
+        // Call loadScheduledTests when the page loads
+        document.addEventListener('DOMContentLoaded', loadScheduledTests);
+
+
+        async function loadProjects() {
+            const response = await fetch('/Schedule/GetProjects');
+            const projects = await response.json();
+            projectSelect.innerHTML = '<option value="">Choose a project...</option>';
+            projects.forEach(project => {
+                projectSelect.innerHTML += `<option value="${project.id}">${project.name}</option>`;
+            });
+        }
+
+        async function loadTestSuites(projectId) {
+            testSuiteSelect.disabled = false;
+            if (@Json.Serialize(enableTestCases) && testCaseSelect) {
+                testCaseSelect.disabled = false;
+            }
+
+            testSuiteSelect.innerHTML = '<option value="">Choose a test suite...</option>';
+
+            if (!projectId) return;
+
+            try {
+                const response = await fetch(`/Schedule/GetTestSuites/${projectId}`);
+                if (!response.ok) throw new Error('Failed to fetch test suites');
+
+                const serverSuites = await response.json();
+
+                serverSuites.forEach(suite => {
+                    const option = document.createElement('option');
+                    option.value = suite.id;
+                    option.text = suite.name;
+                    testSuiteSelect.add(option);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading test suites');
+            }
+        }
+
+        async function toggleSchedule(jobId) {
+            try {
+                const response = await fetch('/Schedule/Toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `jobId=${jobId}`
+                });
+
+                if (response.ok) {
+                    // Refresh the table to show updated status
+                    await loadScheduledTests();
+                } else {
+                    throw new Error('Failed to toggle job');
+                }
+            } catch (error) {
+                console.error('Error toggling job:', error);
+                alert('Error toggling job status');
+            }
+        }
+
+
+        async function loadTestCases(suiteId) {
+            if (!@Json.Serialize(enableTestCases)) {
+                return; // Early return if feature is disabled
+            }
+
+            const testCaseSelect = document.getElementById('testCaseSelect');
+            if (!testCaseSelect) return;
+
+            testCaseSelect.disabled = !suiteId;
+            testCaseSelect.innerHTML = '<option value="">Choose a test case...</option>';
+
+            if (!suiteId) return;
+
+            try {
+                const response = await fetch(`/Schedule/GetTestCases/${suiteId}`);
+                if (!response.ok) throw new Error('Failed to fetch test cases');
+
+                const testCases = await response.json();
+                testCases.forEach(testCase => {
+                    const option = document.createElement('option');
+                    option.value = testCase.id;
+                    option.text = testCase.name;
+                    testCaseSelect.add(option);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading test cases');
+            }
+        }
+
+        async function toggleJob(jobId) {
+            try {
+                const response = await fetch('/Schedule/Toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `jobId=${jobId}`
+                });
+
+                if (response.ok) {
+                    // Refresh the table to show updated status
+                    await loadScheduledTests();
+                } else {
+                    throw new Error('Failed to toggle job');
+                }
+            } catch (error) {
+                console.error('Error toggling job:', error);
+                alert('Error toggling job status');
+            }
+        }
+
+
+
+        async function deleteSchedule(jobId) {
+            if (!confirm('Are you sure you want to delete this scheduled test?')) {
+                return;
+            }
+
+            try {
+                const encodedJobId = encodeURIComponent(jobId);
+                const response = await fetch(`/Schedule/Delete/${encodedJobId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete schedule');
+                await loadScheduledTests();
+            } catch (error) {
+                console.error('Error deleting job:', error);
+                alert('Error deleting scheduled test');
+            }
+        }
+
+
+
+
+        async function showManualTestSuiteModal() {
+            // Load projects into the manual project select dropdown
+            const response = await fetch('/Schedule/GetProjects');
+            const projects = await response.json();
+            const manualProjectSelect = document.getElementById('manualProjectSelect');
+            manualProjectSelect.innerHTML = '<option value="">Choose a project...</option>';
+            projects.forEach(project => {
+                manualProjectSelect.innerHTML += `<option value="${project.id}">${project.name}</option>`;
+            });
+            testSuiteModal.show();
+        }
+
+        async function showManualTestCaseModal() {
+            // Get the currently selected project from the main form
+            const selectedProjectId = document.getElementById('projectSelect').value;
+            if (!selectedProjectId) {
+                alert('Please select a project first');
+                return;
+            }
+
+            // Load both server and temporary test suites for the selected project
+            const suitesResponse = await fetch(`/Schedule/GetTestSuites/${selectedProjectId}`);
+            const serverSuites = await suitesResponse.json();
+
+            const projectTempSuites = tempTestSuites
+                .filter(s => parseInt(s.projectId) === parseInt(selectedProjectId))
+                .map(s => ({ id: 'temp_' + s.name, name: s.name }));
+
+            const allSuites = [...serverSuites, ...projectTempSuites];
+
+            // Update the manual test case modal's suite select
+            const manualSuiteSelect = document.getElementById('manualSuiteSelect');
+            manualSuiteSelect.innerHTML = '<option value="">Choose a test suite...</option>';
+            allSuites.forEach(suite => {
+                manualSuiteSelect.innerHTML += `<option value="${suite.id}">${suite.name}</option>`;
+            });
+
+            testCaseModal.show();
+        }
+
+
+        // Add these at the top with other let declarations
+        let tempTestSuites = [];
+        let tempTestCases = [];
+
+        async function saveManualTestSuite() {
+            const projectId = document.getElementById('manualProjectSelect').value;
+            const name = document.getElementById('manualSuiteName').value;
+            const filePath = document.getElementById('manualSuiteFilePath').value;
+
+            // Add to temp suites array first
+            tempTestSuites.push({
+                projectId: projectId,
+                name: name,
+                filePath: filePath
+            });
+
+            // Update hidden inputs
+            document.getElementById('tempTestSuites').value = JSON.stringify(tempTestSuites);
+            document.getElementById('projectId').value = projectId;
+            document.getElementById('selectedTestSuite').value = filePath;
+
+            // Update dropdowns
+            const projectSelect = document.getElementById('projectSelect');
+            projectSelect.value = projectId;
+
+            // Load profiles for the selected project
+            await loadProfiles(projectId);
+
+            // Set default profile if none selected
+            const profileSelect = document.getElementById('profileSelect');
+            if (!profileSelect.value) {
+                profileSelect.value = 'profiles\\default.glbl';
+            }
+            document.getElementById('selectedProfile').value = profileSelect.value;
+
+            // Add the new suite to the test suite dropdown
+            const testSuiteSelect = document.getElementById('testSuiteSelect');
+            const option = document.createElement('option');
+            option.value = `temp_${name}`;
+            option.text = name;
+            testSuiteSelect.add(option);
+            testSuiteSelect.value = option.value;
+
+            // Hide modal and reset form
+            testSuiteModal.hide();
+            document.getElementById('manualTestSuiteForm').reset();
+        }
+
+        async function saveManualTestCase() {
+            const data = {
+                testSuiteId: document.getElementById('manualSuiteSelect').value,
+                name: document.getElementById('manualCaseName').value,
+                filePath: document.getElementById('manualCaseFilePath').value
+            };
+
+            // Add to temporary array instead of saving to DB
+            tempTestCases.push(data);
+            document.getElementById('tempTestCases').value = JSON.stringify(tempTestCases);
+
+            testCaseModal.hide();
+
+            // Update the main form's test case dropdown
+            await loadTestCases(data.testSuiteId);
+
+            // Enable the test case select if it was disabled
+            const testCaseSelect = document.getElementById('testCaseSelect');
+            testCaseSelect.disabled = false;
+        }
+
+        function resetScheduleForm() {
+            tempTestSuites = [];
+            tempTestCases = [];
+            document.getElementById('tempTestSuites').value = '';
+            document.getElementById('tempTestCases').value = '';
+            document.getElementById('scheduleForm').reset();
+            // Reset all dropdowns to initial state
+            loadProjects();
+        }
+
+        async function editTestSuite(testSuiteId) {
+            try {
+                const response = await fetch(`/Schedule/GetTestSuite/${testSuiteId}`);
+                if (!response.ok) throw new Error('Failed to fetch test suite');
+
+                const testSuite = await response.json();
+                console.log('Fetched test suite:', testSuite);
+
+                // Set project and its display name
+                const projectSelect = document.getElementById('projectSelect');
+                projectSelect.value = testSuite.projectId;
+
+                // If project isn't in dropdown, add it
+                if (!Array.from(projectSelect.options).some(opt => opt.value === testSuite.projectId.toString())) {
+                    const option = document.createElement('option');
+                    option.value = testSuite.projectId;
+                    option.text = testSuite.projectName;
+                    projectSelect.add(option);
+                }
+
+                document.getElementById('projectName').value = testSuite.projectName;
+
+                await loadTestSuites(testSuite.projectId.toString());
+
+                // Force a small delay to ensure the dropdown is populated
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Find the test suite in the dropdown by name
+                const testSuiteSelect = document.getElementById('testSuiteSelect');
+                console.log('Available options:', Array.from(testSuiteSelect.options).map(o => ({ text: o.text, value: o.value }))); // Debug log
+
+                // Try to find the matching suite by name first, then by ID
+                const matchingSuite = Array.from(testSuiteSelect.options).find(opt =>
+                    opt.text === testSuite.name ||
+                    opt.value === testSuite.id.toString() ||
+                    opt.value === testSuite.filePath
+                );
+
+                if (matchingSuite) {
+                    testSuiteSelect.value = matchingSuite.value;
+                } else {
+                    console.warn('No matching test suite found, adding it to the dropdown');
+                    // Add the test suite to the dropdown if it's not there
+                    const option = document.createElement('option');
+                    option.value = testSuite.id;
+                    option.text = testSuite.name;
+                    testSuiteSelect.add(option);
+                    testSuiteSelect.value = testSuite.id;
+                }
+
+                // Set the hidden input with the filepath
+                document.getElementById('selectedTestSuite').value = testSuite.filePath;
+
+                // Set time values
+                document.getElementById('hour').value = testSuite.hour;
+                document.getElementById('minute').value = testSuite.minute;
+
+                // Clear and set days
+                document.querySelectorAll('input[name="days"]').forEach(cb => cb.checked = false);
+                const dayMap = { '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri' };
+                testSuite.days.forEach(day => {
+                    const checkbox = document.getElementById(`day-${dayMap[day]}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+
+                // Show form section and update UI for edit mode
+                const section = document.getElementById('addTestSection');
+                section.style.display = 'block';
+
+                const form = document.getElementById('scheduleForm');
+                form.dataset.mode = 'edit';
+                form.dataset.testSuiteId = testSuiteId;
+
+                // Update UI text
+                const submitButton = form.querySelector('button[type="submit"]');
+                submitButton.textContent = 'Update Schedule';
+                document.querySelector('#addTestSection .card-header h5').textContent = 'Edit Schedule';
+
+                // Hide manual add buttons
+                document.querySelectorAll('.manual-add-btn, .btn-sm.ms-2').forEach(el => {
+                    el.style.display = 'none';
+                });
+
+                // Enable the test suite select
+                testSuiteSelect.disabled = false;
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading test suite');
+            }
+        }
+
+        async function deleteTestSuite(testSuiteId) {
+            if (!confirm('Are you sure? This will delete all scheduled tests for this suite.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Schedule/DeleteTestSuite/${testSuiteId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    await loadScheduledTests();
+                } else {
+                    throw new Error('Failed to delete test suite');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting test suite');
+            }
+        }
+
+        async function loadProfiles(projectId) {
+            const profileSelect = document.getElementById('profileSelect');
+            profileSelect.disabled = !projectId;
+            profileSelect.innerHTML = '<option value="">Choose a profile...</option>';
+
+            if (!projectId) return;
+
+            try {
+                const response = await fetch(`/Schedule/GetProfiles/${projectId}`);
+                if (!response.ok) throw new Error('Failed to fetch profiles');
+
+                const profiles = await response.json();
+                profiles.forEach(profile => {
+                    const option = document.createElement('option');
+                    option.value = profile.path;
+                    option.text = profile.name;
+                    profileSelect.add(option);
+                });
+
+                // Enable the select after loading profiles
+                profileSelect.disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading profiles');
+            }
+        }
+
+    </script>
+}

@@ -51,6 +51,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "Cronos": {
+              "target": "Package",
+              "version": "[0.9.0, )"
+            },
             "Hangfire": {
               "target": "Package",
               "version": "[1.8.17, )"
@@ -68,6 +72,18 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[9.0.0, )"
+            },
+            "Serilog": {
+              "target": "Package",
+              "version": "[3.1.1, )"
+            },
+            "Serilog.AspNetCore": {
+              "target": "Package",
+              "version": "[8.0.1, )"
+            },
+            "Serilog.Sinks.SQLite": {
+              "target": "Package",
+              "version": "[6.0.0, )"
             }
           },
           "imports": [
