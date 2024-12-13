@@ -106,14 +106,10 @@ private class SelectListItemComparer : IEqualityComparer<SelectListItem>
 [HttpGet]
 public async Task<IActionResult> GetProjects()
 {
-    // Get first organization since we're not implementing auth yet
-    var organization = await _context.Organizations.FirstOrDefaultAsync();
-    if (organization == null) return Json(new List<object>());
-
     var projects = await _context.Projects
-        .Where(p => p.OrganizationId == organization.Id)
-        .Select(p => new { id = p.Id, name = p.Name })
+        .Select(p => new { p.Id, p.Name })
         .ToListAsync();
+    
     return Json(projects);
 }
 
@@ -242,32 +238,37 @@ public async Task<IActionResult> Create([FromForm] ScheduleTestViewModel model)
             return NotFound();
 
         // First try to find by ID (for existing test suites)
-        var testSuite = await _context.TestSuites
-            .FirstOrDefaultAsync(ts => ts.Id.ToString() == model.SelectedTestSuite);
+// First try to find by ID (for existing test suites)
+var testSuite = await _context.TestSuites
+    .FirstOrDefaultAsync(ts => ts.Id.ToString() == model.SelectedTestSuite);
 
-        // If not found by ID, then try by FilePath
-        if (testSuite == null)
-        {
-            testSuite = await _context.TestSuites
-                .FirstOrDefaultAsync(ts => ts.FilePath == model.SelectedTestSuite && ts.ProjectId == model.ProjectId);
-        }
+// If not found by ID, try to find by file path
+if (testSuite == null)
+{
+    testSuite = await _context.TestSuites
+        .FirstOrDefaultAsync(ts => ts.FilePath == model.SelectedTestSuite);
+}
 
-        // Only create new TestSuite if we're using manual add (indicated by no existing testSuite and tempTestSuites data)
-        if (testSuite == null && !string.IsNullOrEmpty(model.TempTestSuites))
-        {
-            testSuite = new TestSuite
-            {
-                ProjectId = model.ProjectId,
-                Name = Path.GetFileNameWithoutExtension(model.SelectedTestSuite),
-                FilePath = model.SelectedTestSuite
-            };
-            _context.TestSuites.Add(testSuite);
-            await _context.SaveChangesAsync();
-        }
-        else if (testSuite == null)
-        {
-            return BadRequest("Test suite not found");
-        }
+// If still not found and we have temp test suites, create a new one
+if (testSuite == null && !string.IsNullOrEmpty(model.TempTestSuites))
+{
+    testSuite = new TestSuite
+    {
+        ProjectId = model.ProjectId,
+        Name = Path.GetFileNameWithoutExtension(model.SelectedTestSuite),
+        FilePath = model.SelectedTestSuite
+    };
+    _context.TestSuites.Add(testSuite);
+    await _context.SaveChangesAsync();
+}
+
+// If we still don't have a test suite at this point, it's an error
+if (testSuite == null)
+{
+    _logger.LogWarning("Test suite not found. SelectedTestSuite: {suite}, ProjectId: {projectId}", 
+        model.SelectedTestSuite, model.ProjectId);
+    return BadRequest("Test suite not found");
+}
 
         var jobId = $"test-{Guid.NewGuid()}";
         
@@ -297,7 +298,8 @@ public async Task<IActionResult> Create([FromForm] ScheduleTestViewModel model)
             DayOfWeek = dayOfWeek,
             Schedule = $"{model.Hour:D2}:{model.Minute:D2} on {dayOfWeek}",
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            LastRunStatus = "Pending"
         };
 
         _context.ScheduledTests.Add(scheduledTest);
@@ -330,7 +332,11 @@ public async Task<IActionResult> GetProject(int id)
         id = project.Id, 
         name = project.Name,
         gitUrl = project.GitUrl,
-        projectPath = project.ProjectPath
+        projectPath = project.ProjectPath,
+        gitRepositoryPath = project.GitRepositoryPath,  // Added
+        testOpsProjectId = project.TestOpsProjectId,    // Added
+        lastScanned = project.LastScanned,
+        organizationId = project.OrganizationId
     });
 }
 
@@ -474,8 +480,8 @@ public async Task<IActionResult> Index()
             RecurringJob.AddOrUpdate(
                 jobId,
                 () => _testRunnerService.RunTestAsync(
-                    scheduledTest.Project.GitRepositoryPath, 
-                    scheduledTest.TestSuitePath, 
+                    scheduledTest.Project.ProjectPath, 
+                    scheduledTest.TestSuite.FilePath, 
                     CancellationToken.None),
                 cron);
             scheduledTest.IsActive = true;

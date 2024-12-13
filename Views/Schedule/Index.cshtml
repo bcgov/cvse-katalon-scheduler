@@ -52,7 +52,7 @@
 
                 <div class="col-md-4">
                     <label class="form-label">Select Profile</label>
-                    <select id="profileSelect" class="form-select" disabled required>
+                    <select id="profileSelect" class="form-select" disabled >
                         <option value="">Choose a profile...</option>
                     </select>
                 </div>
@@ -789,32 +789,46 @@
             }
         }
 
-        async function loadProfiles(projectId) {
-            const profileSelect = document.getElementById('profileSelect');
-            profileSelect.disabled = !projectId;
-            profileSelect.innerHTML = '<option value="">Choose a profile...</option>';
+async function loadProfiles(projectId) {
+    const profileSelect = document.getElementById('profileSelect');
+    profileSelect.disabled = !projectId;
+    profileSelect.innerHTML = '<option value="">Choose a profile...</option>';
 
-            if (!projectId) return;
+    if (!projectId) return;
 
-            try {
-                const response = await fetch(`/Schedule/GetProfiles/${projectId}`);
-                if (!response.ok) throw new Error('Failed to fetch profiles');
+    try {
+        const response = await fetch(`/Schedule/GetProfiles/${projectId}`);
+        if (!response.ok) throw new Error('Failed to fetch profiles');
 
-                const profiles = await response.json();
-                profiles.forEach(profile => {
-                    const option = document.createElement('option');
-                    option.value = profile.path;
-                    option.text = profile.name;
-                    profileSelect.add(option);
-                });
-
-                // Enable the select after loading profiles
-                profileSelect.disabled = false;
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error loading profiles');
-            }
+        const profiles = await response.json();
+        
+        // Add default profile if no profiles are returned
+        if (!profiles || profiles.length === 0) {
+            const defaultOption = document.createElement('option');
+            defaultOption.value = 'profiles\\default.glbl';
+            defaultOption.text = 'Default Profile';
+            profileSelect.add(defaultOption);
+        } else {
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.path;
+                option.text = profile.name;
+                profileSelect.add(option);
+            });
         }
+
+        // Enable the select after loading profiles
+        profileSelect.disabled = false;
+    } catch (error) {
+        console.error('Error:', error);
+        // On error, still add default profile as fallback
+        const defaultOption = document.createElement('option');
+        defaultOption.value = 'profiles\\default.glbl';
+        defaultOption.text = 'Default Profile';
+        profileSelect.add(defaultOption);
+        profileSelect.disabled = false;
+    }
+}
 
     </script>
 }

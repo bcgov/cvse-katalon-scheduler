@@ -10,5 +10,4 @@ public class OrganizationViewModel
     [Display(Name = "Short Name")]
     public string ShortName { get; set; } = string.Empty;
 
-    public int TestOpsProjectId { get; set; }
 }

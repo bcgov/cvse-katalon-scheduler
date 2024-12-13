@@ -12,4 +12,5 @@ public class Project
     public Organization Organization { get; set; } = null!;
     public List<TestSuite> TestSuites { get; set; } = new();
     public List<TestCase> TestCases { get; set; } = new();
+    public long? TestOpsProjectId { get; set; }
 }

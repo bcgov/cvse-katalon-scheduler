@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public required DbSet<TestSuite> TestSuites { get; set; }
     public required DbSet<ScheduledTest> ScheduledTests { get; set; }
     public required DbSet<AdminSettings> AdminSettings { get; set; }
+    public required DbSet<TestExecutionLog> TestExecutionLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

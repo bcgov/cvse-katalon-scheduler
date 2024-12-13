@@ -4,7 +4,6 @@ public class Organization
     public required string KatalonOrganizationId { get; set; }  // New field to replace ShortName
     public required string Name { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public int TestOpsProjectId { get; set; }
     
     // Navigation property
     public List<Project> Projects { get; set; } = new();

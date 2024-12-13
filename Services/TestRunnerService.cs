@@ -27,51 +27,77 @@ public class TestRunnerService : ITestRunnerService
 
     public async Task<ExecutionResult> RunTestAsync(string projectPath, string testPath, CancellationToken cancellationToken = default)
     {
-        // Validate Katalon runtime exists
-        if (!File.Exists(_options.KatalonPath))
-        {
-            _logger.LogError("Katalon runtime not found at: {Path}", _options.KatalonPath);
-            return new ExecutionResult
-            {
-                Success = false,
-                Message = $"Katalon runtime not found at: {_options.KatalonPath}"
-            };
-        }
+    var testSuite = await _context.TestSuites
+        .FirstOrDefaultAsync(ts => ts.FilePath == testPath);
 
-        var projectDirectory = Path.GetDirectoryName(projectPath);
-        if (string.IsNullOrEmpty(projectDirectory))
-        {
-            _logger.LogError("Invalid project path: {Path}", projectPath);
-            return new ExecutionResult
-            {
-                Success = false,
-                Message = "Invalid project path"
-            };
-        }
+    if (testSuite == null)
+    {
+        _logger.LogError("Test suite not found for path: {Path}", testPath);
+        return new ExecutionResult { Success = false, Message = "Test suite not found" };
+    }
 
-        // Find the scheduled test record
-        var scheduledTest = await _context.ScheduledTests
-            .FirstOrDefaultAsync(st => st.TestSuitePath == testPath);
+    // Then find the ScheduledTest using TestSuiteId
+    var scheduledTest = await _context.ScheduledTests
+        .FirstOrDefaultAsync(st => st.TestSuiteId == testSuite.Id);
+
+    var executionLog = new TestExecutionLog
+    {
+        JobId = scheduledTest?.JobId ?? "manual-run",  // Provide default for manual runs
+        ScheduledTestId = scheduledTest?.Id ?? 0,
+        ExecutionTime = DateTime.UtcNow,
+        Status = "Pending"
+    };
+
         try
         {
-            // Build arguments with project-specific values
-            var arguments = new[]
+
+            if (!File.Exists(_options.KatalonPath))
             {
-        "-noSplash",
-        "-runMode=console",
-        $"-projectPath=\"{projectPath}\"",
-        "-retry=0",
-        $"-testSuitePath=\"{testPath}\"",
-        "-browserType=\"Chrome\"",
-        $"-executionProfile=\"{_options.ExecutionProfile}\"",
-        $"-apiKey=\"{_options.ApiKey}\"",
-        $"-testOpsProjectId={projectPath.Split('\\').Last().Split('_').First()}",
-        "--config",
-        "-proxy.auth.option=NO_PROXY",
-        "-proxy.system.option=NO_PROXY",
-        "-proxy.system.applyToDesiredCapabilities=true",
-        "-webui.autoUpdateDrivers=true"
-    };
+                executionLog.Status = "RuntimeError";
+                executionLog.ErrorMessage = $"Katalon runtime not found at: {_options.KatalonPath}";
+
+                if (scheduledTest != null)
+                {
+                    scheduledTest.LastRun = DateTime.UtcNow;
+                    scheduledTest.LastRunStatus = executionLog.Status;
+                }
+
+                await SaveExecutionLogAndTest(executionLog, scheduledTest);
+                return new ExecutionResult { Success = false, Message = executionLog.ErrorMessage };
+            }
+
+            var projectDirectory = Path.GetDirectoryName(projectPath);
+            if (string.IsNullOrEmpty(projectDirectory))
+            {
+                _logger.LogError("Invalid project path: {Path}", projectPath);
+                return new ExecutionResult
+                {
+                    Success = false,
+                    Message = "Invalid project path"
+                };
+            }
+
+
+   
+            // Build arguments with project-specific values
+var arguments = new[]
+{
+    "-noSplash",
+    "-runMode=console",
+    $"-projectPath=\"{projectPath}\"",
+    "-retry=0",
+    $"-testSuitePath=\"{testPath}\"",  // Remove "Test Suites/" prefix since it's already in the path
+    "-browserType=\"Chrome\"",
+    $"-executionProfile=\"{_options.ExecutionProfile}\"",
+    $"-apiKey=\"{_options.ApiKey}\"",
+    $"-testOpsReleaseId={_options.TestOpsReleaseId}",
+    $"-testOpsProjectId={_options.TestOpsProjectId}",
+    "--config",
+    "-proxy.auth.option=NO_PROXY",
+    "-proxy.system.option=NO_PROXY",
+    "-proxy.system.applyToDesiredCapabilities=true",
+    "-webui.autoUpdateDrivers=true"
+};
 
             _logger.LogInformation("Running Katalon test with arguments: {Args}", string.Join(" ", arguments));
 
@@ -96,13 +122,17 @@ public class TestRunnerService : ITestRunnerService
 
             await process.WaitForExitAsync(cancellationToken);
 
-            // Update the scheduled test status
+            executionLog.Status = process.ExitCode == 0 ? "Success" : "Failed";
+            executionLog.ExecutionDetails = $"Exit Code: {process.ExitCode}";
+
             if (scheduledTest != null)
             {
                 scheduledTest.LastRun = DateTime.UtcNow;
-                scheduledTest.LastRunStatus = process.ExitCode == 0 ? "Success" : "Failed";
-                await _context.SaveChangesAsync(cancellationToken);
+                scheduledTest.LastRunStatus = executionLog.Status;
             }
+
+            await SaveExecutionLogAndTest(executionLog, scheduledTest);
+
 
             return new ExecutionResult
             {
@@ -112,25 +142,34 @@ public class TestRunnerService : ITestRunnerService
         }
         catch (Exception ex)
         {
-            // Update status on error
+            executionLog.Status = "SchedulerError";
+            executionLog.ErrorMessage = ex.Message;
+            executionLog.ExecutionDetails = ex.StackTrace;
+
             if (scheduledTest != null)
             {
                 scheduledTest.LastRun = DateTime.UtcNow;
-                scheduledTest.LastRunStatus = "Failed";
-                await _context.SaveChangesAsync(cancellationToken);
+                scheduledTest.LastRunStatus = executionLog.Status;
             }
 
+            await SaveExecutionLogAndTest(executionLog, scheduledTest);
             _logger.LogError(ex, "Error running test");
-            return new ExecutionResult
-            {
-                Success = false,
-                Message = $"Error running test: {ex.Message}"
-            };
+            return new ExecutionResult { Success = false, Message = $"Error running test: {ex.Message}" };
         }
     }
 
     public async Task<bool> ValidateKatalonRuntimeAsync()
     {
         return await Task.Run(() => File.Exists(_options.KatalonPath));
+    }
+
+    private async Task SaveExecutionLogAndTest(TestExecutionLog log, ScheduledTest scheduledTest)
+    {
+        _context.TestExecutionLogs.Add(log);
+        if (scheduledTest != null)
+        {
+            _context.ScheduledTests.Update(scheduledTest);
+        }
+        await _context.SaveChangesAsync();
     }
 }

@@ -3,6 +3,7 @@ using System;
 using KatalonScheduler.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KatalonScheduler.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241213192455_AddTestExecutionLogs")]
+    partial class AddTestExecutionLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -56,6 +59,9 @@ namespace KatalonScheduler.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("TestOpsProjectId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("Organizations");
@@ -88,9 +94,6 @@ namespace KatalonScheduler.Migrations
                     b.Property<string>("ProjectPath")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<long?>("TestOpsProjectId")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

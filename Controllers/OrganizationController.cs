@@ -74,7 +74,6 @@ public async Task<IActionResult> Create([FromForm] Organization org)
             
             existing.Name = org.Name;
             existing.KatalonOrganizationId = org.KatalonOrganizationId;
-            existing.TestOpsProjectId = org.TestOpsProjectId;  // Add this line
             _context.Organizations.Update(existing);
         }
         
