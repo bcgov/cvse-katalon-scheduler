@@ -52,7 +52,7 @@
 
                 <div class="col-md-4">
                     <label class="form-label">Select Profile</label>
-                    <select id="profileSelect" class="form-select" disabled >
+                    <select id="profileSelect" class="form-select" disabled>
                         <option value="">Choose a profile...</option>
                     </select>
                 </div>
@@ -91,7 +91,6 @@
                 </div>
             </div>
 
-            <!-- Add after the project/suite/case selection dropdowns -->
             <div class="row mb-3">
                 <div class="col-md-12">
                     <button type="button" class="btn btn-outline-secondary manual-add-btn"
@@ -113,7 +112,7 @@
             </div>
 
         </form>
-        <!-- Add at the bottom of the page -->
+
         <!-- Manual Test Suite Modal -->
         <div class="modal fade" id="manualTestSuiteModal" tabindex="-1" role="dialog"
             aria-labelledby="manualTestSuiteModalLabel">
@@ -190,7 +189,6 @@
         <h5 class="mb-0">Test Schedules</h5>
     </div>
     <div id="scheduledTestsContainer">
-        <!-- Content will be loaded dynamically -->
     </div>
 </div>
 
@@ -251,7 +249,6 @@
                 const selectedDays = Array.from(document.querySelectorAll('input[name="days"]:checked'))
                     .map(checkbox => dayMap[checkbox.value]);
 
-                // If no days selected, use "*" for every day
                 if (selectedDays.length === 0) {
                     selectedDays.push('*');
                 }
@@ -313,8 +310,6 @@
             }
         }
 
-
-
         async function loadScheduledTests() {
             try {
 
@@ -337,76 +332,76 @@
 
                 if (!groups || groups.length === 0) {
                     container.innerHTML = `
-                            <div class="card">
-                                <div class="card-body text-center">No scheduled tests found</div>
-                            </div>`;
+                                <div class="card">
+                                    <div class="card-body text-center">No scheduled tests found</div>
+                                </div>`;
                     return;
                 }
 
                 container.innerHTML = groups.map(group => `
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-file-earmark-text me-2"></i>
-                                    ${group.testSuiteName}
-                                </h6>
-                                <small class="text-muted">${group.testSuitePath}</small>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-striped mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Project</th>
-                                            <th>Profile</th>
-                                            <th>Schedule</th>
-                                            <th>Status</th>
-                                            <th>Last Run</th>
-                                            <th>Success/Failuer</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                        ${group.testSuiteName}
+                                    </h6>
+                                    <small class="text-muted">${group.testSuitePath}</small>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-striped mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Project</th>
+                                                <th>Profile</th>
+                                                <th>Schedule</th>
+                                                <th>Status</th>
+                                                <th>Last Run</th>
+                                                <th>Success/Failuer</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
 
-                                <tbody>
-                                    ${group.scheduledRuns.map(test => {
-                                        // Extract day number from schedule
-                                        const scheduleMatch = test.schedule.match(/(\d{2}:\d{2}) on (\d)/);
-                                        const time = scheduleMatch ? scheduleMatch[1] : '';
-                                        const dayNum = scheduleMatch ? scheduleMatch[2] : '';
-                                        const dayName = dayNumberToName[dayNum] || dayNum;
+                                    <tbody>
+                                        ${group.scheduledRuns.map(test => {
+                    // Extract day number from schedule
+                    const scheduleMatch = test.schedule.match(/(\d{2}:\d{2}) on (\d)/);
+                    const time = scheduleMatch ? scheduleMatch[1] : '';
+                    const dayNum = scheduleMatch ? scheduleMatch[2] : '';
+                    const dayName = dayNumberToName[dayNum] || dayNum;
 
-                                        return `
-                                            <tr class="${test.isActive ? 'table-success' : ''}">
-                                                <td>${test.projectName}</td>
-                                                <td>${test.selectedProfile}</td>
-                                                <td>${time} on ${dayName}</td>
-                                                <td>${test.isActive ? 'Active' : 'Inactive'}</td>
-                                                <td>${test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}</td>
-                                                <td>
-                                                    ${test.lastRunStatus ? 
-                                                        `<span class="badge ${test.lastRunStatus === 'Success' ? 'bg-success' : 'bg-danger'}">
-                                                            ${test.lastRunStatus}
-                                                        </span>` : 
-                                                        'N/A'}
-                                                </td>
-                                                <td>
-                                                    <div class="btn-group">
-                                                        <button class="btn btn-sm btn-outline-warning" 
-                                                                onclick="toggleSchedule('${test.jobId}')">
-                                                            ${test.isActive ? 'Pause' : 'Resume'}
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger" 
-                                                                onclick="deleteSchedule('${test.jobId}')">
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>`;
-                                    }).join('')}
-                                    </tbody>
-                                </table>
+                    return `
+                                                <tr class="${test.isActive ? 'table-success' : ''}">
+                                                    <td>${test.projectName}</td>
+                                                    <td>${test.selectedProfile}</td>
+                                                    <td>${time} on ${dayName}</td>
+                                                    <td>${test.isActive ? 'Active' : 'Inactive'}</td>
+                                                    <td>${test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}</td>
+                                                    <td>
+                                                        ${test.lastRunStatus ?
+                            `<span class="badge ${test.lastRunStatus === 'Success' ? 'bg-success' : 'bg-danger'}">
+                                                                ${test.lastRunStatus}
+                                                            </span>` :
+                            'N/A'}
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group">
+                                                            <button class="btn btn-sm btn-outline-warning" 
+                                                                    onclick="toggleSchedule('${test.jobId}')">
+                                                                ${test.isActive ? 'Pause' : 'Resume'}
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger" 
+                                                                    onclick="deleteSchedule('${test.jobId}')">
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>`;
+                }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                    `).join('');
+                        `).join('');
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error loading scheduled tests');
@@ -479,7 +474,7 @@
 
         async function loadTestCases(suiteId) {
             if (!@Json.Serialize(enableTestCases)) {
-                return; // Early return if feature is disabled
+                return;
             }
 
             const testCaseSelect = document.getElementById('testCaseSelect');
@@ -507,30 +502,6 @@
             }
         }
 
-        async function toggleJob(jobId) {
-            try {
-                const response = await fetch('/Schedule/Toggle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `jobId=${jobId}`
-                });
-
-                if (response.ok) {
-                    // Refresh the table to show updated status
-                    await loadScheduledTests();
-                } else {
-                    throw new Error('Failed to toggle job');
-                }
-            } catch (error) {
-                console.error('Error toggling job:', error);
-                alert('Error toggling job status');
-            }
-        }
-
-
-
         async function deleteSchedule(jobId) {
             if (!confirm('Are you sure you want to delete this scheduled test?')) {
                 return;
@@ -552,7 +523,6 @@
                 alert('Error deleting scheduled test');
             }
         }
-
 
 
 
@@ -597,7 +567,6 @@
         }
 
 
-        // Add these at the top with other let declarations
         let tempTestSuites = [];
         let tempTestCases = [];
 
@@ -682,7 +651,6 @@
                 if (!response.ok) throw new Error('Failed to fetch test suite');
 
                 const testSuite = await response.json();
-                console.log('Fetched test suite:', testSuite);
 
                 // Set project and its display name
                 const projectSelect = document.getElementById('projectSelect');
@@ -705,7 +673,6 @@
 
                 // Find the test suite in the dropdown by name
                 const testSuiteSelect = document.getElementById('testSuiteSelect');
-                console.log('Available options:', Array.from(testSuiteSelect.options).map(o => ({ text: o.text, value: o.value }))); // Debug log
 
                 // Try to find the matching suite by name first, then by ID
                 const matchingSuite = Array.from(testSuiteSelect.options).find(opt =>
@@ -789,46 +756,45 @@
             }
         }
 
-async function loadProfiles(projectId) {
-    const profileSelect = document.getElementById('profileSelect');
-    profileSelect.disabled = !projectId;
-    profileSelect.innerHTML = '<option value="">Choose a profile...</option>';
+        async function loadProfiles(projectId) {
+            const profileSelect = document.getElementById('profileSelect');
+            profileSelect.disabled = !projectId;
+            profileSelect.innerHTML = '<option value="">Choose a profile...</option>';
 
-    if (!projectId) return;
+            if (!projectId) return;
 
-    try {
-        const response = await fetch(`/Schedule/GetProfiles/${projectId}`);
-        if (!response.ok) throw new Error('Failed to fetch profiles');
+            try {
+                const response = await fetch(`/Schedule/GetProfiles/${projectId}`);
+                if (!response.ok) throw new Error('Failed to fetch profiles');
 
-        const profiles = await response.json();
-        
-        // Add default profile if no profiles are returned
-        if (!profiles || profiles.length === 0) {
-            const defaultOption = document.createElement('option');
-            defaultOption.value = 'profiles\\default.glbl';
-            defaultOption.text = 'Default Profile';
-            profileSelect.add(defaultOption);
-        } else {
-            profiles.forEach(profile => {
-                const option = document.createElement('option');
-                option.value = profile.path;
-                option.text = profile.name;
-                profileSelect.add(option);
-            });
+                const profiles = await response.json();
+
+                // Add default profile if no profiles are returned
+                if (!profiles || profiles.length === 0) {
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = 'profiles\\default.glbl';
+                    defaultOption.text = 'Default Profile';
+                    profileSelect.add(defaultOption);
+                } else {
+                    profiles.forEach(profile => {
+                        const option = document.createElement('option');
+                        option.value = profile.path;
+                        option.text = profile.name;
+                        profileSelect.add(option);
+                    });
+                }
+
+                profileSelect.disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+                // On error still add default profile as fallback
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'profiles\\default.glbl';
+                defaultOption.text = 'Default Profile';
+                profileSelect.add(defaultOption);
+                profileSelect.disabled = false;
+            }
         }
-
-        // Enable the select after loading profiles
-        profileSelect.disabled = false;
-    } catch (error) {
-        console.error('Error:', error);
-        // On error, still add default profile as fallback
-        const defaultOption = document.createElement('option');
-        defaultOption.value = 'profiles\\default.glbl';
-        defaultOption.text = 'Default Profile';
-        profileSelect.add(defaultOption);
-        profileSelect.disabled = false;
-    }
-}
 
     </script>
 }

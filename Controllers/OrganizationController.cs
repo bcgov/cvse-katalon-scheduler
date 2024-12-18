@@ -23,100 +23,98 @@ public class OrganizationController : Controller
 
     public IActionResult Create()
     {
-        // Instead of creating an empty object, we'll just return the view
-        // The form will bind to a new object when posted
         return View();
     }
 
     [HttpPost]
-public async Task<IActionResult> Delete(int id)
-{
-    try
+    public async Task<IActionResult> Delete(int id)
     {
-        var org = await _context.Organizations.FindAsync(id);
-        if (org == null) return NotFound();
+        try
+        {
+            var org = await _context.Organizations.FindAsync(id);
+            if (org == null) return NotFound();
 
-        _context.Organizations.Remove(org);
-        await _context.SaveChangesAsync();
-        TempData["Success"] = "Organization deleted successfully";
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error deleting organization");
-        TempData["Error"] = "Error deleting organization";
-    }
+            _context.Organizations.Remove(org);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Organization deleted successfully";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting organization");
+            TempData["Error"] = "Error deleting organization";
+        }
 
-    return RedirectToAction("Index", "Admin");
-}
-
-[HttpPost]
-public async Task<IActionResult> Create([FromForm] Organization org)
-{
-    if (!ModelState.IsValid)
-    {
-        TempData["Error"] = "Invalid organization data";
         return RedirectToAction("Index", "Admin");
     }
 
-    try
+    [HttpPost]
+    public async Task<IActionResult> Create([FromForm] Organization org)
     {
-        if (org.Id == 0)
+        if (!ModelState.IsValid)
         {
-            // Create new
-            org.CreatedAt = DateTime.UtcNow;
-            _context.Organizations.Add(org);
+            TempData["Error"] = "Invalid organization data";
+            return RedirectToAction("Index", "Admin");
         }
-        else
+
+        try
         {
-            // Update existing
-            var existing = await _context.Organizations.FindAsync(org.Id);
-            if (existing == null) return NotFound();
-            
-            existing.Name = org.Name;
-            existing.KatalonOrganizationId = org.KatalonOrganizationId;
-            _context.Organizations.Update(existing);
+            if (org.Id == 0)
+            {
+                // Create new
+                org.CreatedAt = DateTime.UtcNow;
+                _context.Organizations.Add(org);
+            }
+            else
+            {
+                // Update existing
+                var existing = await _context.Organizations.FindAsync(org.Id);
+                if (existing == null) return NotFound();
+
+                existing.Name = org.Name;
+                existing.KatalonOrganizationId = org.KatalonOrganizationId;
+                _context.Organizations.Update(existing);
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Organization {(org.Id == 0 ? "created" : "updated")} successfully";
         }
-        
-        await _context.SaveChangesAsync();
-        TempData["Success"] = $"Organization {(org.Id == 0 ? "created" : "updated")} successfully";
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving organization");
+            TempData["Error"] = "Error saving organization";
+        }
+
+        return RedirectToAction("Index", "Admin");
     }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error saving organization");
-        TempData["Error"] = "Error saving organization";
-    }
-    
-    return RedirectToAction("Index", "Admin");
-}
 
     [HttpGet]
-public async Task<JsonResult> GetOrganization(int id)
-{
-    var org = await _context.Organizations.FindAsync(id);
-    return Json(org);
-}
+    public async Task<JsonResult> GetOrganization(int id)
+    {
+        var org = await _context.Organizations.FindAsync(id);
+        return Json(org);
+    }
 
-[HttpPost]
-public async Task<IActionResult> Edit(int id, Organization org)
-{
-    if (id != org.Id) return BadRequest();
-    
-    try
+    [HttpPost]
+    public async Task<IActionResult> Edit(int id, Organization org)
     {
-        var existing = await _context.Organizations.FindAsync(id);
-        if (existing == null) return NotFound();
-        
-        existing.Name = org.Name;
-        existing.Id = org.Id;
-        await _context.SaveChangesAsync();
-        TempData["Success"] = "Organization updated successfully";
+        if (id != org.Id) return BadRequest();
+
+        try
+        {
+            var existing = await _context.Organizations.FindAsync(id);
+            if (existing == null) return NotFound();
+
+            existing.Name = org.Name;
+            existing.Id = org.Id;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Organization updated successfully";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating organization");
+            TempData["Error"] = "Error updating organization";
+        }
+
+        return RedirectToAction("Index", "Admin");
     }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error updating organization");
-        TempData["Error"] = "Error updating organization";
-    }
-    
-    return RedirectToAction("Index", "Admin");
-}
 }

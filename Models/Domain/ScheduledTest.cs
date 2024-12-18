@@ -16,7 +16,6 @@ public class ScheduledTest
     public DateTime? LastRun { get; set; }
     public DateTime? NextRun { get; set; }
 
-    // Navigation properties
     public Project Project { get; set; }
     public TestSuite TestSuite { get; set; }
     public TestCase TestCase { get; set; }

@@ -8,7 +8,6 @@ public class Project
     public string ProjectPath { get; set; } = string.Empty;
     public DateTime LastScanned { get; set; }
     
-    // Navigation properties
     public Organization Organization { get; set; } = null!;
     public List<TestSuite> TestSuites { get; set; } = new();
     public List<TestCase> TestCases { get; set; } = new();

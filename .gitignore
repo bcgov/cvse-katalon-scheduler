@@ -3,3 +3,8 @@
 ################################################################################
 
 /.vs/KatalonScheduler
+appsettings.Development.json
+appsettings.Production.json
+*.db
+/bin
+/obj

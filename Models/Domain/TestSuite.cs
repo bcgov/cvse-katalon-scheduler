@@ -4,8 +4,7 @@ public class TestSuite
     public string Name { get; set; }
     public string FilePath { get; set; }
     public int ProjectId { get; set; }
-    
-    // Navigation properties
+
     public Project Project { get; set; }
     public ICollection<TestCase> TestCases { get; set; }
     public ICollection<ScheduledTest> ScheduledTests { get; set; }

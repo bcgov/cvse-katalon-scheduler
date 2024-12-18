@@ -40,6 +40,9 @@ public class Program
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            var env = builder.Environment.EnvironmentName;
+            builder.Configuration.SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile($"appsettings.{env}.json", optional: true);
 
             // Hangfire
             builder.Services.AddHangfire((sp, config) => {
@@ -53,7 +56,12 @@ public class Program
                     .UseRecommendedSerializerSettings()
                     .UseSQLiteStorage("Filename=KatalonScheduler.Hangfire.db;", options);
             });
-            builder.Services.AddHangfireServer();
+            builder.Services.AddHangfireServer(options => {
+                options.WorkerCount = 1;  
+                options.Queues = new[] { "default" };
+                options.ServerTimeout = TimeSpan.FromMinutes(5);
+                options.ShutdownTimeout = TimeSpan.FromMinutes(5);
+            });
 
             // Services
             builder.Services.AddScoped<IKatalonService, KatalonService>();

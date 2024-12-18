@@ -4,10 +4,9 @@ public class TestExecutionLog
     public string JobId { get; set; }
     public int ScheduledTestId { get; set; }
     public DateTime ExecutionTime { get; set; }
-    public string Status { get; set; } // "Success", "Failed", "SchedulerError", "RuntimeError", "TestNotFound"
+    public string Status { get; set; }
     public string ErrorMessage { get; set; }
-    public string ExecutionDetails { get; set; } // Can store additional details like stack trace
+    public string ExecutionDetails { get; set; } 
     
-    // Navigation properties
     public ScheduledTest ScheduledTest { get; set; }
 }

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KatalonScheduler")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6e8e6fda8aa876e3a586ca13f43c7f39846a79a2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dc96c3850cff67e60e00c36a5b4d66f72974691a")]
 [assembly: System.Reflection.AssemblyProductAttribute("KatalonScheduler")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KatalonScheduler")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

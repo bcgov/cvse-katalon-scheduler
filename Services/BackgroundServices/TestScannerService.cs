@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
 using KatalonScheduler.Configuration;
-using KatalonScheduler.Services.Interfaces;
 
 namespace KatalonScheduler.Services;
 
@@ -19,7 +18,7 @@ public class TestScannerService : BackgroundService
         _options = options.Value;
         _logger = logger;
 
-          _logger.LogInformation("TestScannerService initialized with scan interval: {ScanInterval} minutes", 
+        _logger.LogInformation("TestScannerService initialized with scan interval: {ScanInterval} minutes", 
         _options.ScanIntervalMinutes);
     }
 

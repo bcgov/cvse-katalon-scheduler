@@ -9,6 +9,7 @@ public class KatalonOptions
     public string KatalonPath { get; set; } = string.Empty;
     public int ScanIntervalMinutes { get; set; } = 15;
 
+    //This is set as default as it should be extracted to this location after install
     public string RuntimePath { get; set; } = "C:\\Katalon_Studio_Engine_Windows_64-9.0.0\\katalonc.exe";
     public string ProjectPath { get; set; }
     public string OrgId { get; set; }

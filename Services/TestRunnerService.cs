@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
 using KatalonScheduler.Configuration;
 using KatalonScheduler.Services.Interfaces;
 using KatalonScheduler.Models.Domain;
 using KatalonScheduler.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace KatalonScheduler.Services;
 
@@ -25,36 +25,56 @@ public class TestRunnerService : ITestRunnerService
         _context = context;
     }
 
-    public async Task<ExecutionResult> RunTestAsync(string projectPath, string testPath, CancellationToken cancellationToken = default)
+    public async Task<ExecutionResult> RunTestAsync(string projectPath, string testPath, string executionProfile, int? testOpsProjectId, CancellationToken cancellationToken = default)
     {
-    var testSuite = await _context.TestSuites
-        .FirstOrDefaultAsync(ts => ts.FilePath == testPath);
 
-    if (testSuite == null)
-    {
-        _logger.LogError("Test suite not found for path: {Path}", testPath);
-        return new ExecutionResult { Success = false, Message = "Test suite not found" };
-    }
+        var paths = await GetRequiredPaths();
 
-    // Then find the ScheduledTest using TestSuiteId
-    var scheduledTest = await _context.ScheduledTests
-        .FirstOrDefaultAsync(st => st.TestSuiteId == testSuite.Id);
+        var testSuite = await _context.TestSuites
+            .FirstOrDefaultAsync(ts => ts.FilePath == testPath);
 
-    var executionLog = new TestExecutionLog
-    {
-        JobId = scheduledTest?.JobId ?? "manual-run",  // Provide default for manual runs
-        ScheduledTestId = scheduledTest?.Id ?? 0,
-        ExecutionTime = DateTime.UtcNow,
-        Status = "Pending"
-    };
+        if (testSuite == null)
+        {
+            _logger.LogError("Test suite not found for path: {Path}", testPath);
+            return new ExecutionResult { Success = false, Message = "Test suite not found" };
+        }
+
+        // Then find the ScheduledTest using TestSuiteId
+        var scheduledTest = await _context.ScheduledTests
+            .FirstOrDefaultAsync(st => st.TestSuiteId == testSuite.Id);
+
+        var executionLog = new TestExecutionLog
+        {
+            JobId = scheduledTest?.JobId ?? "manual-run",
+            ScheduledTestId = scheduledTest?.Id ?? 0,
+            ExecutionTime = DateTime.UtcNow,
+            Status = "Pending",
+            ErrorMessage = ""
+        };
+
+        if (scheduledTest != null)
+        {
+            // Check if there's already a running execution for this job
+            var existingExecution = await _context.TestExecutionLogs
+                .Where(l => l.JobId == scheduledTest.JobId &&
+                            l.ExecutionTime > DateTime.UtcNow.AddMinutes(-5) &&
+                            l.Status == "Success")
+                .AnyAsync();
+
+            if (existingExecution)
+            {
+                _logger.LogInformation("Test execution already started for job {JobId}", scheduledTest.JobId);
+                return new ExecutionResult { Success = true, Message = "Test execution already in progress" };
+            }
+        }
 
         try
         {
 
-            if (!File.Exists(_options.KatalonPath))
+            if (!File.Exists(paths.katalonPath))
             {
                 executionLog.Status = "RuntimeError";
-                executionLog.ErrorMessage = $"Katalon runtime not found at: {_options.KatalonPath}";
+                executionLog.ErrorMessage = $"Katalon runtime not found at: {paths.katalonPath}";
 
                 if (scheduledTest != null)
                 {
@@ -77,33 +97,37 @@ public class TestRunnerService : ITestRunnerService
                 };
             }
 
+            var project = await _context.Projects.FindAsync(testSuite.ProjectId);
+            if (project == null)
+            {
+                _logger.LogError("Project not found for test suite: {TestSuiteId}", testSuite.Id);
+                return new ExecutionResult { Success = false, Message = "Project not found" };
+            }
 
-   
             // Build arguments with project-specific values
-var arguments = new[]
-{
-    "-noSplash",
-    "-runMode=console",
-    $"-projectPath=\"{projectPath}\"",
-    "-retry=0",
-    $"-testSuitePath=\"{testPath}\"",  // Remove "Test Suites/" prefix since it's already in the path
-    "-browserType=\"Chrome\"",
-    $"-executionProfile=\"{_options.ExecutionProfile}\"",
-    $"-apiKey=\"{_options.ApiKey}\"",
-    $"-testOpsReleaseId={_options.TestOpsReleaseId}",
-    $"-testOpsProjectId={_options.TestOpsProjectId}",
-    "--config",
-    "-proxy.auth.option=NO_PROXY",
-    "-proxy.system.option=NO_PROXY",
-    "-proxy.system.applyToDesiredCapabilities=true",
-    "-webui.autoUpdateDrivers=true"
-};
+            var arguments = new[]
+            {
+                "-noSplash",
+                "-runMode=console",
+                $"-projectPath=\"{projectPath}\"",
+                "-retry=0",
+                $"-testSuitePath=\"{testPath.Replace('\\', '/').Replace(".ts", "")}\"",
+                "-browserType=\"Chrome\"",
+                $"-executionProfile=\"{(scheduledTest?.SelectedProfile ?? "default").Replace("profiles\\", "").Replace(".glbl", "")}\"",
+                $"-apiKey=\"{_options.ApiKey}\"",
+                $"-testOpsProjectId={project.TestOpsProjectId}",
+                "--config",
+                "-proxy.auth.option=NO_PROXY",
+                "-proxy.system.option=NO_PROXY",
+                "-proxy.system.applyToDesiredCapabilities=true",
+                "-webui.autoUpdateDrivers=true"
+            };
 
             _logger.LogInformation("Running Katalon test with arguments: {Args}", string.Join(" ", arguments));
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = _options.KatalonPath,
+                FileName = paths.katalonPath,
                 Arguments = string.Join(" ", arguments),
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -113,32 +137,72 @@ var arguments = new[]
             };
 
             using var process = new Process { StartInfo = startInfo };
-            process.OutputDataReceived += (sender, e) => _logger.LogInformation(e.Data);
-            process.ErrorDataReceived += (sender, e) => _logger.LogError(e.Data);
+            var outputBuilder = new StringBuilder();
+            var errorBuilder = new StringBuilder();
 
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            await process.WaitForExitAsync(cancellationToken);
-
-            executionLog.Status = process.ExitCode == 0 ? "Success" : "Failed";
-            executionLog.ExecutionDetails = $"Exit Code: {process.ExitCode}";
-
-            if (scheduledTest != null)
+            process.OutputDataReceived += (sender, e) =>
             {
-                scheduledTest.LastRun = DateTime.UtcNow;
-                scheduledTest.LastRunStatus = executionLog.Status;
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    _logger.LogInformation(e.Data);
+                    outputBuilder.AppendLine(e.Data);
+                }
+            };
+
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    _logger.LogError(e.Data);
+                    errorBuilder.AppendLine(e.Data);
+                }
+            };
+
+            try
+            {
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                // Don't wait for exit, just check if process started successfully
+                if (process.HasExited && process.ExitCode != 0)
+                {
+                    executionLog.Status = "Failed";
+                    executionLog.ExecutionDetails = $"Process failed to start. Exit Code: {process.ExitCode}\n\nOutput:\n{outputBuilder}\n\nErrors:\n{errorBuilder}";
+
+                    if (scheduledTest != null)
+                    {
+                        scheduledTest.LastRun = DateTime.UtcNow;
+                        scheduledTest.LastRunStatus = executionLog.Status;
+                    }
+
+                    await SaveExecutionLogAndTest(executionLog, scheduledTest);
+                    return new ExecutionResult { Success = false, Message = "Failed to start Katalon process" };
+                }
+
+                // Consider it successful if we got this far
+                executionLog.Status = "Success";
+                executionLog.ErrorMessage = "";
+                executionLog.ExecutionDetails = $"Test execution started successfully\n\nOutput:\n{outputBuilder}";
+
+                if (scheduledTest != null)
+                {
+                    scheduledTest.LastRun = DateTime.UtcNow;
+                    scheduledTest.LastRunStatus = executionLog.Status;
+                }
+
+                await SaveExecutionLogAndTest(executionLog, scheduledTest);
+                return new ExecutionResult { Success = true, Message = "Test execution started successfully" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Katalon process");
+                executionLog.Status = "Failed";
+                executionLog.ErrorMessage = $"Process failed to start with exit code: {process.ExitCode}";
+                executionLog.ExecutionDetails = $"Process failed to start. Exit Code: {process.ExitCode}\n\nOutput:\n{outputBuilder}\n\nErrors:\n{errorBuilder}";
+                return new ExecutionResult { Success = false, Message = $"Error starting test: {ex.Message}" };
             }
 
-            await SaveExecutionLogAndTest(executionLog, scheduledTest);
-
-
-            return new ExecutionResult
-            {
-                Success = process.ExitCode == 0,
-                Message = process.ExitCode == 0 ? "Test completed successfully" : "Test failed"
-            };
         }
         catch (Exception ex)
         {
@@ -156,11 +220,34 @@ var arguments = new[]
             _logger.LogError(ex, "Error running test");
             return new ExecutionResult { Success = false, Message = $"Error running test: {ex.Message}" };
         }
+
+    }
+    private async Task<(string katalonPath, string baseRepoPath)> GetRequiredPaths()
+    {
+        var adminSettings = await _context.AdminSettings.FirstOrDefaultAsync();
+
+        var katalonPath = adminSettings?.KatalonPath ?? _options.KatalonPath;
+        var baseRepoPath = adminSettings?.BaseRepositoryPath ?? _options.ProjectsBasePath;
+
+        if (string.IsNullOrEmpty(katalonPath) || string.IsNullOrEmpty(baseRepoPath))
+        {
+            throw new InvalidOperationException("Required paths not configured in AdminSettings or appsettings.json");
+        }
+
+        return (katalonPath, baseRepoPath);
     }
 
     public async Task<bool> ValidateKatalonRuntimeAsync()
     {
-        return await Task.Run(() => File.Exists(_options.KatalonPath));
+        try
+        {
+            var paths = await GetRequiredPaths();
+            return await Task.Run(() => File.Exists(paths.katalonPath));
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task SaveExecutionLogAndTest(TestExecutionLog log, ScheduledTest scheduledTest)

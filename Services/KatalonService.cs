@@ -124,7 +124,7 @@ public class KatalonService : IKatalonService
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    Arguments = $"clone \"{gitUrl}\" \"{project.GitRepositoryPath}\"",  // Add quotes around both arguments
+                    Arguments = $"clone \"{gitUrl}\" \"{project.GitRepositoryPath}\"",  
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -140,7 +140,7 @@ public class KatalonService : IKatalonService
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    Arguments = "pull",  // This one is fine as is
+                    Arguments = "pull",  
                     WorkingDirectory = project.GitRepositoryPath,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -184,6 +184,7 @@ public class KatalonService : IKatalonService
         }
     }
 
+    //behind feature flag not currently turned on until we want it
     private async Task ScanTestCasesForProject(Project project)
     {
         var testCasesPath = Path.Combine(Path.GetDirectoryName(project.GitRepositoryPath)!, "Test Cases");

@@ -104,7 +104,9 @@
                             <td>@project.GitRepositoryPath</td>
                             <td>@project.ProjectPath</td>
                             <td>@project.TestOpsProjectId</td>
-                            <td>@project.LastScanned.ToLocalTime().ToString("g")</td>
+                            <td>
+                                @(project.LastScanned != default ? project.LastScanned.ToLocalTime().ToString("g") : "Never")
+                            </td>
                             <td>
                                 <div class="btn-group">
                                     <button class="btn btn-sm btn-outline-primary"
@@ -236,7 +238,7 @@
             const section = document.getElementById('addProjectSection');
             section.style.display = section.style.display === 'none' ? 'block' : 'none';
 
-            // If we're showing the section and have an organization filter, update the hidden input
+            // If we're showing the section and have an organization filter update the hidden input
             if (section.style.display === 'block') {
                 const orgFilter = document.getElementById('organizationFilter');
                 if (orgFilter) {
