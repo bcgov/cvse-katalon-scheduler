@@ -18,7 +18,7 @@ public class ScheduleController : Controller
     private readonly ITestRunnerService _testRunnerService;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<ScheduleController> _logger;
-    private readonly GitOptions _gitOptions;
+    private readonly IOptions<GitOptions> _gitOptions;
 
     public ScheduleController(
         IKatalonService katalonService,
@@ -31,7 +31,7 @@ public class ScheduleController : Controller
         _testRunnerService = testRunnerService;
         _context = context;
         _logger = logger;
-        _gitOptions = gitOptions.Value;
+        _gitOptions = gitOptions;
     }
 
     public async Task<IActionResult> Projects()
@@ -166,9 +166,9 @@ public class ScheduleController : Controller
             .Select(ts => new
             {
                 id = ts.Id,
-                name = ts.Name.Replace("Test Suites\\", ""), 
+                name = ts.Name.Replace("Test Suites\\", ""),
                 filePath = ts.FilePath,
-                projectId = ts.ProjectId  
+                projectId = ts.ProjectId
             })
             .ToListAsync();
 
@@ -288,9 +288,9 @@ public class ScheduleController : Controller
             {
                 JobId = jobId,
                 ProjectId = model.ProjectId,
-                TestSuiteId = testSuite.Id,  
+                TestSuiteId = testSuite.Id,
                 SelectedProfile = model.SelectedProfile ?? "default",
-                TestSuitePath = testSuite.FilePath, 
+                TestSuitePath = testSuite.FilePath,
                 Hour = int.Parse(model.Hour),
                 Minute = int.Parse(model.Minute),
                 DayOfWeek = dayOfWeek,
@@ -310,8 +310,8 @@ public class ScheduleController : Controller
                 () => _testRunnerService.RunTestAsync(
                     project.ProjectPath,
                     testSuite.FilePath,
-                    scheduledTest.SelectedProfile, 
-                    (int?)project.TestOpsProjectId,     
+                    scheduledTest.SelectedProfile,
+                    (int?)project.TestOpsProjectId,
                     CancellationToken.None),
                 cron);
 
@@ -337,8 +337,8 @@ public class ScheduleController : Controller
             name = project.Name,
             gitUrl = project.GitUrl,
             projectPath = project.ProjectPath,
-            gitRepositoryPath = project.GitRepositoryPath,  
-            testOpsProjectId = project.TestOpsProjectId,    
+            gitRepositoryPath = project.GitRepositoryPath,
+            testOpsProjectId = project.TestOpsProjectId,
             lastScanned = project.LastScanned,
             organizationId = project.OrganizationId
         });
@@ -353,9 +353,14 @@ public class ScheduleController : Controller
 
         project.Name = model.Name;
         project.GitUrl = model.GitUrl;
-        project.ProjectPath = model.ProjectPath;
         project.GitRepositoryPath = model.GitRepositoryPath;
         project.TestOpsProjectId = model.TestOpsProjectId;
+
+        // Only update ProjectPath if it's provided
+        if (!string.IsNullOrEmpty(model.ProjectPath))
+        {
+            project.ProjectPath = model.ProjectPath;
+        }
 
         await _context.SaveChangesAsync();
         return Ok();
@@ -370,14 +375,15 @@ public class ScheduleController : Controller
 
         try
         {
+            var adminSettings = await _context.AdminSettings.FirstOrDefaultAsync();
             // Check if directory exists first
-            if (!Directory.Exists(project.GitRepositoryPath))
+            if (!Directory.Exists(Path.Combine(adminSettings.BaseRepositoryPath, project.GitRepositoryPath)))
             {
                 return NotFound(new { error = $"Project directory not found: {project.GitRepositoryPath}" });
             }
 
             // Search for .prj file in the Git repository directory
-            var prjFiles = Directory.GetFiles(project.GitRepositoryPath, "*.prj", SearchOption.AllDirectories);
+            var prjFiles = Directory.GetFiles(Path.Combine(adminSettings.BaseRepositoryPath, project.GitRepositoryPath), "*.prj", SearchOption.AllDirectories);
 
             if (!prjFiles.Any())
                 return NotFound(new { error = "No .prj file found in repository" });
@@ -429,18 +435,18 @@ public class ScheduleController : Controller
     {
         var groupedTests = await _context.ScheduledTests
             .Include(st => st.Project)
-            .Include(st => st.TestSuite)  // Make sure TestSuite is included
+            .Include(st => st.TestSuite) 
             .GroupBy(st => st.TestSuiteId)
             .Select(group => new TestSuiteGroupViewModel
             {
-                TestSuiteName = group.First().TestSuite.Name.Replace("Test Suites\\", ""),  
+                TestSuiteName = group.First().TestSuite.Name.Replace("Test Suites\\", ""),
                 TestSuitePath = group.First().TestSuite.FilePath,
                 TestSuite = group.First().TestSuite,
                 ScheduledRuns = group.Select(st => new ScheduledTestViewModel
                 {
                     JobId = st.JobId,
                     ProjectName = st.Project.Name,
-                    TestSuiteName = st.TestSuite.Name.Replace("Test Suites\\", ""), 
+                    TestSuiteName = st.TestSuite.Name.Replace("Test Suites\\", ""),
                     TestSuitePath = st.TestSuite.FilePath,
                     SelectedProfile = st.SelectedProfile ?? "Default",
                     Schedule = $"{st.Hour:D2}:{st.Minute:D2} on {st.DayOfWeek}",
@@ -474,13 +480,13 @@ public class ScheduleController : Controller
 
         if (job?.NextExecution.HasValue ?? false)
         {
-            // Job is active, pause it
+            // Job is active pause it
             manager.RemoveIfExists(jobId);
             scheduledTest.IsActive = false;
         }
         else
         {
-            // Job is paused, resume it
+            // Job is paused resume it
             var cron = $"{scheduledTest.Minute} {scheduledTest.Hour} * * {scheduledTest.DayOfWeek}";
             RecurringJob.AddOrUpdate(
                 jobId,
@@ -499,7 +505,7 @@ public class ScheduleController : Controller
     }
 
     [HttpPost]
-    [Route("[controller]/Delete/{jobId}")] 
+    [Route("[controller]/Delete/{jobId}")]
     public async Task<IActionResult> Delete(string jobId)
     {
         if (string.IsNullOrEmpty(jobId))
@@ -585,7 +591,7 @@ public class ScheduleController : Controller
         var testSuite = await _context.TestSuites
             .Include(ts => ts.TestCases)
             .Include(ts => ts.ScheduledTests)
-            .Include(ts => ts.Project)  
+            .Include(ts => ts.Project)
             .FirstOrDefaultAsync(ts => ts.Id == id);
 
         if (testSuite == null)
@@ -641,13 +647,16 @@ public class ScheduleController : Controller
             return RedirectToAction(nameof(Projects));
         }
 
+        var adminSettings = await _context.AdminSettings.FirstOrDefaultAsync();
+        var baseRepoPath = adminSettings?.BaseRepositoryPath;
+
         var project = new Project
         {
             Name = SanitizeProjectName(projectVM.Name),
             GitUrl = projectVM.GitUrl,
-            GitRepositoryPath = Path.Combine(_gitOptions.BaseRepositoryPath, projectVM.Name),
-            ProjectPath = projectVM.ProjectPath,
+            GitRepositoryPath = Path.Combine(baseRepoPath, SanitizeProjectName(projectVM.Name)),
             OrganizationId = projectVM.OrganizationId,
+            TestOpsProjectId = projectVM.TestOpsProjectId,
             LastScanned = DateTime.UtcNow
         };
 
@@ -660,10 +669,33 @@ public class ScheduleController : Controller
                 TempData["Error"] = "Organization not found";
                 return RedirectToAction(nameof(Projects));
             }
-
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Project added successfully";
+
+            // Try to sync the project following the same steps as manual scan
+            try
+            {
+                // Sync/clone repository
+                await _katalonService.ScanProjectAsync(project);
+                //  Get .prj file path
+                var prjFiles = Directory.GetFiles(project.GitRepositoryPath, "*.prj", SearchOption.AllDirectories);
+                if (prjFiles.Any())
+                {
+                    //  Update project path
+                    project.ProjectPath = prjFiles.First();
+                    await _context.SaveChangesAsync();
+                    TempData["Success"] = "Project added and synced successfully";
+                }
+                else
+                {
+                    TempData["Warning"] = "Project added but no .prj file found. Please check the repository.";
+                }
+            }
+            catch (Exception syncEx)
+            {
+                _logger.LogError(syncEx, "Error syncing new project: {@Project}", project);
+                TempData["Warning"] = "Project added but sync failed. Please check your Git URL and try syncing manually.";
+            }
         }
         catch (Exception ex)
         {
@@ -689,10 +721,10 @@ public class ScheduleController : Controller
 
             _logger.LogInformation("Found project: {@Project}", project);
             await _katalonService.ScanProjectAsync(project);
-            
+
             project.LastScanned = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            
+
             _logger.LogInformation("Project scan completed successfully for ID: {ProjectId}", id);
             return Ok();
         }
@@ -719,24 +751,13 @@ public class ScheduleController : Controller
 
         try
         {
-
-            var projectPath = Path.Combine(_gitOptions.BaseRepositoryPath, SanitizeProjectName(project.Name));
-
-            if (!Directory.Exists(projectPath))
+            project = await _context.Projects.FindAsync(project.Id);
+            if (project == null)
             {
-                _logger.LogInformation("Cloning repository for {ProjectName} to {ProjectPath}", project.Name, projectPath);
-                await CloneRepositoryAsync(project.GitUrl, projectPath);
+                throw new InvalidOperationException("Project not found");
             }
-            else
-            {
-                _logger.LogInformation("Pulling latest changes for {ProjectName} at {ProjectPath}", project.Name, projectPath);
-                await PullLatestChangesAsync(projectPath);
-            }
-
-            // Update project's local path
-            project.GitRepositoryPath = projectPath;
-            await _context.SaveChangesAsync();
-
+            // Use KatalonService's UpdateGitRepository method which handles auth and Git operations
+            await _katalonService.ScanProjectAsync(project);
             _logger.LogInformation("Git sync completed for project: {ProjectName}", project.Name);
         }
         catch (Exception ex)
@@ -746,52 +767,6 @@ public class ScheduleController : Controller
         }
     }
 
-    private async Task CloneRepositoryAsync(string gitUrl, string localPath)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "git",
-            Arguments = $"clone {gitUrl} \"{localPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        await process.WaitForExitAsync();
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync();
-            throw new Exception($"Git clone failed: {error}");
-        }
-    }
-
-    private async Task PullLatestChangesAsync(string localPath)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "git",
-            Arguments = "pull",
-            WorkingDirectory = localPath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        await process.WaitForExitAsync();
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync();
-            throw new Exception($"Git pull failed: {error}");
-        }
-    }
 
     [HttpPost]
     public async Task<IActionResult> DeleteProject(int id)

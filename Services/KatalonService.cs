@@ -64,9 +64,9 @@ public class KatalonService : IKatalonService
                 throw new InvalidOperationException("Git access token is not configured");
             }
 
-            // Sanitize the repository path before git operations
-            project.GitRepositoryPath = Path.Combine(_gitOptions.BaseRepositoryPath,
-                string.Join("_", project.Name.Trim().Split(Path.GetInvalidFileNameChars())));
+            // // Sanitize the repository path before git operations
+            // project.GitRepositoryPath = Path.Combine(_gitOptions.BaseRepositoryPath,
+            //     string.Join("_", project.Name.Trim().Split(Path.GetInvalidFileNameChars())));
 
             await UpdateGitRepository(project);
             var basePath = project.GitRepositoryPath;
@@ -124,7 +124,7 @@ public class KatalonService : IKatalonService
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    Arguments = $"clone \"{gitUrl}\" \"{project.GitRepositoryPath}\"",  
+                    Arguments = $"clone \"{gitUrl}\" \"{project.GitRepositoryPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -156,8 +156,13 @@ public class KatalonService : IKatalonService
     {
         try
         {
+            var adminSettings = await _context.AdminSettings.FirstOrDefaultAsync();
+            if (string.IsNullOrEmpty(adminSettings?.GitExecutablePath))
+            {
+                throw new InvalidOperationException("Git executable path not configured in AdminSettings");
+            }
             // Use full path to git executable
-            process.StartInfo.FileName = @"C:\Program Files\Git\bin\git.exe";
+            process.StartInfo.FileName = adminSettings.GitExecutablePath;
 
             _logger.LogInformation("Running Git command: {Command} {Args}",
                 process.StartInfo.FileName,

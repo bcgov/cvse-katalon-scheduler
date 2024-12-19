@@ -34,34 +34,44 @@
     </div>
     <div class="card-body">
         <form asp-action="AddProject" method="post">
-            @if (Model.Count() > 1)
+            @if (!Model.Any())
             {
-                <input type="hidden" id="organizationId" name="OrganizationId" value="@Model.First().Id" />
+                <div class="alert alert-warning">
+                    Please create an organization first.
+                </div>
             }
             else
             {
-                <input type="hidden" name="OrganizationId" value="@Model.First().Id" />
-            }
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">Project Name (From GIT Parent)</label>
-                    <input type="text" name="Name" class="form-control" required />
+                @if (Model.Count() > 1)
+                {
+                    <input type="hidden" id="organizationId" name="OrganizationId" value="@Model.First().Id" />
+                }
+                else
+                {
+                    <input type="hidden" name="OrganizationId" value="@Model.First().Id" />
+                }
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Project Name (From GIT Parent)</label>
+                        <input type="text" name="Name" class="form-control" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Git URL (Main)</label>
+                        <input type="text" name="GitUrl" class="form-control" required
+                            placeholder="https://github.com/username/repository.git" />
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label">Git URL (Main)</label>
-                    <input type="text" name="GitUrl" class="form-control" required
-                        placeholder="https://github.com/username/repository.git" />
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">TestOps Project ID</label>
+                        <input type="number" name="TestOpsProjectId" class="form-control" />
+                    </div>
                 </div>
                 <div class="mb-3">
-                    <label for="projectPath" class="form-label">Project Path (Local)</label>
-                    <input type="text" class="form-control" id="projectPath" name="ProjectPath" required
-                        placeholder="C:\Projects\MyProject\project.prj">
+                    <button type="submit" class="btn btn-primary">Add Project</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleAddProjectSection()">Cancel</button>
                 </div>
-            </div>
-            <div class="mb-3">
-                <button type="submit" class="btn btn-primary">Add Project</button>
-                <button type="button" class="btn btn-secondary" onclick="toggleAddProjectSection()">Cancel</button>
-            </div>
+            }
         </form>
     </div>
 </div>
@@ -152,51 +162,51 @@
             </table>
         </div>
     </div>
-    }
+}
 
-    <!-- Edit Project Modal -->
-    <div class="modal fade" id="editProjectModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Project</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editProjectForm">
-                        <input type="hidden" id="Id" name="Id" />
-                        <input type="hidden" id="LastScanned" name="LastScanned" />
-                        <input type="hidden" id="OrganizationId" name="OrganizationId" />
-                        <div class="mb-3">
-                            <label for="Name" class="form-label">Name (From GIT Parent)</label>
-                            <input type="text" class="form-control" id="Name" name="Name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="GitRepositoryPath" class="form-label">Git Repository Path (Local Location)</label>
-                            <input type="text" class="form-control" id="GitRepositoryPath" name="GitRepositoryPath"
-                                required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="GitUrl" class="form-label">Git URL (Main)</label>
-                            <input type="text" class="form-control" id="GitUrl" name="GitUrl" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="ProjectPath" class="form-label">Project Path (Optional)</label>
-                            <input type="text" class="form-control" id="ProjectPath" name="ProjectPath" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="TestOpsProjectId" class="form-label">TestOps Project ID</label>
-                            <input type="number" class="form-control" id="TestOpsProjectId" name="TestOpsProjectId">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="updateProject()">Update Project</button>
-                </div>
+<!-- Edit Project Modal -->
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProjectForm">
+                    <input type="hidden" id="Id" name="Id" />
+                    <input type="hidden" id="LastScanned" name="LastScanned" />
+                    <input type="hidden" id="OrganizationId" name="OrganizationId" />
+                    <div class="mb-3">
+                        <label for="Name" class="form-label">Name (From GIT Parent)</label>
+                        <input type="text" class="form-control" id="Name" name="Name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="GitRepositoryPath" class="form-label">Git Repository Path (Local Location)</label>
+                        <input type="text" class="form-control" id="GitRepositoryPath" name="GitRepositoryPath"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="GitUrl" class="form-label">Git URL (Main)</label>
+                        <input type="text" class="form-control" id="GitUrl" name="GitUrl" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ProjectPath" class="form-label">Project Path (Optional)</label>
+                        <input type="text" class="form-control" id="ProjectPath" name="ProjectPath" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="TestOpsProjectId" class="form-label">TestOps Project ID</label>
+                        <input type="number" class="form-control" id="TestOpsProjectId" name="TestOpsProjectId">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="updateProject()">Update Project</button>
             </div>
         </div>
     </div>
+</div>
 
 @section Scripts {
     <script>
@@ -210,7 +220,7 @@
             if (firstOrgCard) {
                 const orgId = firstOrgCard.dataset.orgId;
                 filterOrganization(orgId);
-                
+
                 // Set the dropdown to match if it exists
                 const orgFilter = document.getElementById('organizationFilter');
                 if (orgFilter) {
@@ -251,7 +261,18 @@
             if (!confirm('Start scanning project for test cases?')) return;
 
             try {
-                // First, get the .prj file path
+                // First, sync/clone the repository
+                const syncResponse = await fetch(`/Schedule/SyncProject/${projectId}`, {
+                    method: 'POST'
+                });
+
+                if (!syncResponse.ok) {
+                    const error = await syncResponse.json();
+                    alert(error.error || 'Failed to sync repository');
+                    return;
+                }
+
+                // Then get the .prj file path
                 const prjResponse = await fetch(`/Schedule/GetProjectPrjPath/${projectId}`);
                 const data = await prjResponse.json();
 
@@ -260,7 +281,7 @@
                     return;
                 }
 
-                // Update the project's ProjectPath
+                // Update the project ProjectPath
                 await fetch(`/Schedule/UpdateProjectPath/${projectId}`, {
                     method: 'POST',
                     headers: {
@@ -269,7 +290,7 @@
                     body: JSON.stringify({ projectPath: data.projectPath })
                 });
 
-                // Then proceed with the scan
+                // Finally proceed with the scan
                 const response = await fetch(`/Schedule/ScanProject/${projectId}`, {
                     method: 'POST'
                 });
@@ -341,7 +362,7 @@
         async function updateProject() {
             const form = document.getElementById('editProjectForm');
             const formData = new FormData(form);
-            const projectId = document.getElementById('Id').value; 
+            const projectId = document.getElementById('Id').value;
 
             try {
                 const response = await fetch(`/Schedule/UpdateProject/${projectId}`, {
@@ -360,5 +381,11 @@
                 alert('Error updating project');
             }
         }
+
+        const warningMessage = '@TempData["Warning"]';
+        if (warningMessage) {
+            alert(warningMessage);
+        }
+
     </script>
 }

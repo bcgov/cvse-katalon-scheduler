@@ -253,10 +253,10 @@ C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\staticwebassets\msbuild.buildMultiTargeting.KatalonScheduler.props
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\staticwebassets\msbuild.buildTransitive.KatalonScheduler.props
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\staticwebassets.pack.json
-C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\KatalonS.C8BF6894.Up2Date
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\KatalonScheduler.dll
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\refint\KatalonScheduler.dll
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\KatalonScheduler.pdb
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\KatalonScheduler.genruntimeconfig.cache
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\ref\KatalonScheduler.dll
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

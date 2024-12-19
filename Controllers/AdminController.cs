@@ -28,7 +28,8 @@ public class AdminController : Controller
         {
             Organizations = organizations,
             KatalonPath = adminSettings?.KatalonPath ?? "",
-            BaseRepositoryPath = adminSettings?.BaseRepositoryPath ?? ""
+            BaseRepositoryPath = adminSettings?.BaseRepositoryPath ?? "",
+            GitExecutablePath = adminSettings?.GitExecutablePath ?? ""
         };
 
         return View(viewModel);
@@ -42,6 +43,7 @@ public class AdminController : Controller
 
         settings.KatalonPath = model.KatalonPath;
         settings.BaseRepositoryPath = model.BaseRepositoryPath;
+        settings.GitExecutablePath = model.GitExecutablePath;
         settings.LastUpdated = DateTime.UtcNow;
 
         if (settings.Id == 0)

@@ -27,8 +27,8 @@ jobs:
             "HangfireConnection": "Data Source=/app/data/KatalonScheduler.Hangfire.db"
           },
           "Katalon": {
-            "ApiKey": "${{ secrets.KATALON_API_KEY }}",
-            "ServerUrl": "https://testops.katalon.io"
+            "ApiKey": "${{ secrets.KATALON_API_KEY }}"
+          
           },
           "Git": {
             "AccessToken": "${{ secrets.GIT_ACCESS_TOKEN }}"
