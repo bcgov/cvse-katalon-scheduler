@@ -771,9 +771,22 @@ public class ScheduleController : Controller
     [HttpPost]
     public async Task<IActionResult> DeleteProject(int id)
     {
-        var project = await _context.Projects.FindAsync(id);
+        var project = await _context.Projects
+            .Include(p => p.TestSuites)
+                .ThenInclude(ts => ts.ScheduledTests)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
         if (project == null)
             return NotFound();
+
+        // Delete all Hangfire jobs associated with this projects test suites
+        foreach (var testSuite in project.TestSuites)
+        {
+            foreach (var scheduledTest in testSuite.ScheduledTests)
+            {
+                RecurringJob.RemoveIfExists(scheduledTest.JobId);
+            }
+        }
 
         _context.Projects.Remove(project);
         await _context.SaveChangesAsync();
