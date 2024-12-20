@@ -1,0 +1,393 @@
+@model IEnumerable<Organization>
+@{
+    ViewData["Title"] = "Test Projects";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>Test Projects</h2>
+        <h3>Select Organization</h3>
+        @if (Model.Count() > 1)
+        {
+            <select id="organizationFilter" class="form-select mt-2" onchange="filterOrganization(this.value)">
+                @foreach (var org in Model)
+                {
+                    <option value="@org.Id">@org.Name (@org.KatalonOrganizationId)</option>
+                }
+            </select>
+        }
+        else if (Model.Any())
+        {
+            <p class="text-muted mt-2">Organization: @Model.First().Name (@Model.First().KatalonOrganizationId)</p>
+        }
+    </div>
+    <div>
+        <button class="btn btn-success me-2" onclick="toggleAddProjectSection()">Add New Project</button>
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-secondary">Manage Organizations</a>
+    </div>
+</div>
+
+<!-- Collapsible Add Project Section -->
+<div id="addProjectSection" class="card mb-4" style="display: none;">
+    <div class="card-header">
+        <h5 class="mb-0">Add New Project</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="AddProject" method="post">
+            @if (!Model.Any())
+            {
+                <div class="alert alert-warning">
+                    Please create an organization first.
+                </div>
+            }
+            else
+            {
+                @if (Model.Count() > 1)
+                {
+                    <input type="hidden" id="organizationId" name="OrganizationId" value="@Model.First().Id" />
+                }
+                else
+                {
+                    <input type="hidden" name="OrganizationId" value="@Model.First().Id" />
+                }
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Project Name (From GIT Parent)</label>
+                        <input type="text" name="Name" class="form-control" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Git URL (Main)</label>
+                        <input type="text" name="GitUrl" class="form-control" required
+                            placeholder="https://github.com/username/repository.git" />
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">TestOps Project ID</label>
+                        <input type="number" name="TestOpsProjectId" class="form-control" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Add Project</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleAddProjectSection()">Cancel</button>
+                </div>
+            }
+        </form>
+    </div>
+</div>
+
+<!-- Projects Table -->
+@foreach (var org in Model)
+{
+    <div class="card mb-4 org-projects" data-org-id="@org.Id">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">@org.Name</h5>
+            <small class="text-muted">Organization ID: @org.KatalonOrganizationId</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Git URL</th>
+                        <th>Git Repository</th>
+                        <th>Project Path</th>
+                        <th>TestOps Project ID</th>
+                        <th>Last Scanned</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in org.Projects)
+                    {
+                        <tr>
+                            <td>
+                                @project.Name
+                                @if (project.TestSuites.Any())
+                                {
+                                    <button class="btn btn-sm btn-link" onclick="toggleTestSuites(@project.Id)">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                }
+                            </td>
+                            <td>@project.GitUrl</td>
+                            <td>@project.GitRepositoryPath</td>
+                            <td>@project.ProjectPath</td>
+                            <td>@project.TestOpsProjectId</td>
+                            <td>
+                                @(project.LastScanned != default ? project.LastScanned.ToLocalTime().ToString("g") : "Never")
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                        onclick="scanProject(@project.Id)">Scan</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="editProject(@project.Id)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                        onclick="deleteProject(@project.Id)">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                        @if (project.TestSuites.Any())
+                        {
+                            <tr class="test-suites-@project.Id" style="display: none">
+                                <td colspan="5">
+                                    <div class="ms-4">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Test Suite</th>
+                                                    <th>Path</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var suite in project.TestSuites)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <i class="bi bi-file-earmark-text me-2"></i>
+                                                            @suite.Name
+                                                        </td>
+                                                        <td class="text-muted small">@suite.FilePath</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Edit Project Modal -->
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProjectForm">
+                    <input type="hidden" id="Id" name="Id" />
+                    <input type="hidden" id="LastScanned" name="LastScanned" />
+                    <input type="hidden" id="OrganizationId" name="OrganizationId" />
+                    <div class="mb-3">
+                        <label for="Name" class="form-label">Name (From GIT Parent)</label>
+                        <input type="text" class="form-control" id="Name" name="Name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="GitRepositoryPath" class="form-label">Git Repository Path (Local Location)</label>
+                        <input type="text" class="form-control" id="GitRepositoryPath" name="GitRepositoryPath"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="GitUrl" class="form-label">Git URL (Main)</label>
+                        <input type="text" class="form-control" id="GitUrl" name="GitUrl" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ProjectPath" class="form-label">Project Path (Optional)</label>
+                        <input type="text" class="form-control" id="ProjectPath" name="ProjectPath" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="TestOpsProjectId" class="form-label">TestOps Project ID</label>
+                        <input type="number" class="form-control" id="TestOpsProjectId" name="TestOpsProjectId">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="updateProject()">Update Project</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeProjectsUI();
+        });
+
+        function initializeProjectsUI() {
+            // Show first organization's projects by default
+            const firstOrgCard = document.querySelector('.org-projects');
+            if (firstOrgCard) {
+                const orgId = firstOrgCard.dataset.orgId;
+                filterOrganization(orgId);
+
+                // Set the dropdown to match if it exists
+                const orgFilter = document.getElementById('organizationFilter');
+                if (orgFilter) {
+                    orgFilter.value = orgId;
+                }
+            }
+        }
+
+        function toggleTestSuites(projectId) {
+            const suiteRow = document.querySelector(`.test-suites-${projectId}`);
+            const icon = document.querySelector(`button[onclick="toggleTestSuites(${projectId})"] i`);
+
+            if (suiteRow) {
+                if (suiteRow.style.display === 'none') {
+                    suiteRow.style.display = 'table-row';
+                    icon?.classList.replace('bi-chevron-down', 'bi-chevron-up');
+                } else {
+                    suiteRow.style.display = 'none';
+                    icon?.classList.replace('bi-chevron-up', 'bi-chevron-down');
+                }
+            }
+        }
+
+        function toggleAddProjectSection() {
+            const section = document.getElementById('addProjectSection');
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+
+            // If we're showing the section and have an organization filter update the hidden input
+            if (section.style.display === 'block') {
+                const orgFilter = document.getElementById('organizationFilter');
+                if (orgFilter) {
+                    document.getElementById('organizationId').value = orgFilter.value;
+                }
+            }
+        }
+
+        async function scanProject(projectId) {
+            if (!confirm('Start scanning project for test cases?')) return;
+
+            try {
+                // First, sync/clone the repository
+                const syncResponse = await fetch(`/Schedule/SyncProject/${projectId}`, {
+                    method: 'POST'
+                });
+
+                if (!syncResponse.ok) {
+                    const error = await syncResponse.json();
+                    alert(error.error || 'Failed to sync repository');
+                    return;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Then get the .prj file path
+                const prjResponse = await fetch(`/Schedule/GetProjectPrjPath/${projectId}`);
+                const data = await prjResponse.json();
+
+                if (!prjResponse.ok) {
+                    alert(data.error || 'Failed to find project path');
+                    return;
+                }
+
+                // Update the project ProjectPath
+                await fetch(`/Schedule/UpdateProjectPath/${projectId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ projectPath: data.projectPath })
+                });
+
+                // Finally proceed with the scan
+                const response = await fetch(`/Schedule/ScanProject/${projectId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to scan project');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error scanning project');
+            }
+        }
+
+        function filterOrganization(orgId) {
+            // Show/hide project cards based on organization
+            const projectCards = document.querySelectorAll('.org-projects');
+            projectCards.forEach(card => {
+                if (card.dataset.orgId === orgId) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function editProject(projectId) {
+            fetch(`/Schedule/GetProject/${projectId}`)
+                .then(response => response.json())
+                .then(project => {
+                    document.getElementById('Id').value = project.id;
+                    document.getElementById('Name').value = project.name;
+                    document.getElementById('GitUrl').value = project.gitUrl;
+                    document.getElementById('ProjectPath').value = project.projectPath;
+                    document.getElementById('GitRepositoryPath').value = project.gitRepositoryPath;
+                    document.getElementById('TestOpsProjectId').value = project.testOpsProjectId || '';
+                    document.getElementById('LastScanned').value = project.lastScanned;
+                    document.getElementById('OrganizationId').value = project.organizationId;
+
+                    var modal = new bootstrap.Modal(document.getElementById('editProjectModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading project details');
+                });
+        }
+
+        async function deleteProject(projectId) {
+            if (!confirm('Are you sure you want to delete this project?')) return;
+
+            try {
+                const response = await fetch(`/Schedule/DeleteProject/${projectId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to delete project');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting project');
+            }
+        }
+        async function updateProject() {
+            const form = document.getElementById('editProjectForm');
+            const formData = new FormData(form);
+            const projectId = document.getElementById('Id').value;
+
+            try {
+                const response = await fetch(`/Schedule/UpdateProject/${projectId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    const error = await response.text();
+                    alert('Failed to update project: ' + error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating project');
+            }
+        }
+
+        const warningMessage = '@TempData["Warning"]';
+        if (warningMessage) {
+            alert(warningMessage);
+        }
+
+    </script>
+}

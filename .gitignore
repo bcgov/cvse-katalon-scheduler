@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/KatalonScheduler
+appsettings.Development.json
+appsettings.Production.json
+*.db
+/bin
+/obj
+Logs.dbappsettings.json

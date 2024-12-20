@@ -1,0 +1,2 @@
+[Environment]::SetEnvironmentVariable("KATALON_API_KEY", "your-katalon-key", [EnvironmentVariableTarget]::Machine)
+[Environment]::SetEnvironmentVariable("GIT_ACCESS_TOKEN", "your-git-token", [EnvironmentVariableTarget]::Machine)

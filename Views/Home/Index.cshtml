@@ -1,0 +1,132 @@
+@{
+    ViewData["Title"] = "Home";
+    Layout = "_Layout";
+}
+
+<h1>Katalon Scheduler Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <form method="get" class="row g-3">
+                    <div class="col-auto">
+                        <label class="form-label">Date Range:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="datetime-local" name="startDate" class="form-control" value="@Model.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+                    </div>
+                    <div class="col-auto">
+                        <input type="datetime-local" name="endDate" class="form-control" value="@Model.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h6>Successful Executions</h6>
+                <h3>@Model.SuccessfulTests</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h6>Failed</h6>
+                <h3>@Model.FailedTests</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h6>Scheduler Errors</h6>
+                <h3>@Model.SchedulerErrors</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h6>Runtime Errors</h6>
+                <h3>@Model.RuntimeErrors</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>Execution Logs(See Test Ops for more details on results)</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Test Suite</th>
+                        <th>Execution Time</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var log in Model.RecentLogs)
+                    {
+                        <tr>
+                            <td>@log.ScheduledTest?.TestSuite?.Name</td>
+                            <td>@log.ExecutionTime.ToLocalTime()</td>
+                            <td>
+                                <span class="badge @(log.Status switch {
+                                    "Success" => "bg-success",
+                                    "Failed" => "bg-danger",
+                                    "SchedulerError" => "bg-warning",
+                                    "RuntimeError" => "bg-info",
+                                    _ => "bg-secondary"
+                                })">@log.Status</span>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(log.ErrorMessage))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-info" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#errorModal@(log.Id)">
+                                        View Details
+                                    </button>
+                                    
+                                    <div class="modal fade" id="errorModal@(log.Id)" tabindex="-1">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Error Details</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <h6>Error Message:</h6>
+                                                    <pre class="bg-light p-3">@log.ErrorMessage</pre>
+                                                    @if (!string.IsNullOrEmpty(log.ExecutionDetails))
+                                                    {
+                                                        <h6>Stack Trace:</h6>
+                                                        <pre class="bg-light p-3">@log.ExecutionDetails</pre>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
