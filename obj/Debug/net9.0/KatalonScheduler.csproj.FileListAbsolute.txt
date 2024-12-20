@@ -259,3 +259,9 @@ C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\KatalonScheduler.genruntimeconfig.cache
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\ref\KatalonScheduler.dll
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler\web.config
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler\appsettings.Development.json
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler\appsettings.json
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler\KatalonScheduler.deps.json
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler\KatalonScheduler.runtimeconfig.json
+C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler\KatalonScheduler.staticwebassets.endpoints.json
