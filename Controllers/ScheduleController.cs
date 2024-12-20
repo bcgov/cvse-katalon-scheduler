@@ -377,13 +377,13 @@ public class ScheduleController : Controller
         {
             var adminSettings = await _context.AdminSettings.FirstOrDefaultAsync();
             // Check if directory exists first
-            if (!Directory.Exists(Path.Combine(adminSettings.BaseRepositoryPath, project.GitRepositoryPath)))
+            if (!Directory.Exists( project.GitRepositoryPath))
             {
                 return NotFound(new { error = $"Project directory not found: {project.GitRepositoryPath}" });
             }
 
             // Search for .prj file in the Git repository directory
-            var prjFiles = Directory.GetFiles(Path.Combine(adminSettings.BaseRepositoryPath, project.GitRepositoryPath), "*.prj", SearchOption.AllDirectories);
+            var prjFiles = Directory.GetFiles( project.GitRepositoryPath, "*.prj", SearchOption.AllDirectories);
 
             if (!prjFiles.Any())
                 return NotFound(new { error = "No .prj file found in repository" });
@@ -745,27 +745,40 @@ public class ScheduleController : Controller
         return string.Join("_", name.Trim().Split(Path.GetInvalidFileNameChars()));
     }
 
-    public async Task SyncProjectAsync(Project project)
-    {
-        _logger.LogInformation("Starting git sync for project: {ProjectName}", project.Name);
+[HttpPost]
+public async Task<IActionResult> SyncProject(int id)
+{
+    _logger.LogInformation("Starting git sync for project: {ProjectId}", id);
 
-        try
-        {
-            project = await _context.Projects.FindAsync(project.Id);
-            if (project == null)
-            {
-                throw new InvalidOperationException("Project not found");
-            }
-            // Use KatalonService's UpdateGitRepository method which handles auth and Git operations
-            await _katalonService.ScanProjectAsync(project);
-            _logger.LogInformation("Git sync completed for project: {ProjectName}", project.Name);
+    try
+    {
+        var project = await _context.Projects.FindAsync(id);
+        if (project == null) {
+            _logger.LogWarning("Project not found: {ProjectId}", id);
+            return NotFound(new { error = "Project not found" });
         }
-        catch (Exception ex)
+
+        _logger.LogInformation("Found project {Name}, starting git sync at path: {Path}", 
+            project.Name, project.GitRepositoryPath);
+
+        await _katalonService.ScanProjectAsync(project);
+        
+        // Verify directory exists after sync
+        if (!Directory.Exists(project.GitRepositoryPath))
         {
-            _logger.LogError(ex, "Error during git sync for project: {ProjectName}", project.Name);
-            throw;
+            _logger.LogError("Git repository path not found after sync: {Path}", project.GitRepositoryPath);
+            return BadRequest(new { error = "Git sync failed - directory not created" });
         }
+
+        _logger.LogInformation("Git sync completed for project: {ProjectName}", project.Name);
+        return Ok();
     }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error during git sync for project ID: {ProjectId}", id);
+        return BadRequest(new { error = ex.Message });
+    }
+}
 
 
     [HttpPost]

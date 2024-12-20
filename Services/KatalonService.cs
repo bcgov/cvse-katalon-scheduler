@@ -116,42 +116,54 @@ public class KatalonService : IKatalonService
 
     private async Task UpdateGitRepository(Project project)
     {
-        var gitUrl = project.GitUrl.Replace("https://", $"https://oauth2:{_gitOptions.AccessToken}@");
-
-        if (!Directory.Exists(project.GitRepositoryPath))
+        try
         {
-            var cloneProcess = new Process
+            var gitUrl = project.GitUrl.Replace("https://", $"https://oauth2:{_gitOptions.AccessToken}@"); _logger.LogInformation("Starting git operation for project: {Name} at path: {Path}",
+               project.Name, project.GitRepositoryPath);
+            if (!Directory.Exists(project.GitRepositoryPath))
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    Arguments = $"clone \"{gitUrl}\" \"{project.GitRepositoryPath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
+                _logger.LogInformation("Repository directory not found, cloning from: {GitUrl} to {Path}",
+                    project.GitUrl, project.GitRepositoryPath);
 
-            await RunGitCommand(cloneProcess);
+                var cloneProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "git",
+                        Arguments = $"clone {gitUrl} \"{project.GitRepositoryPath}\"",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                await RunGitCommand(cloneProcess);
+            }
+            else
+            {
+                _logger.LogInformation("Repository exists, pulling latest changes");
+                var pullProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "git",
+                        Arguments = "pull",
+                        WorkingDirectory = project.GitRepositoryPath,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                await RunGitCommand(pullProcess);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            var pullProcess = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    Arguments = "pull",  
-                    WorkingDirectory = project.GitRepositoryPath,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-            await RunGitCommand(pullProcess);
+            _logger.LogError(ex, "Git operation failed for project: {Name}", project.Name);
+            throw;
         }
     }
-
     private async Task RunGitCommand(Process process)
     {
         try

@@ -272,6 +272,8 @@
                     return;
                 }
 
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
                 // Then get the .prj file path
                 const prjResponse = await fetch(`/Schedule/GetProjectPrjPath/${projectId}`);
                 const data = await prjResponse.json();

@@ -49,7 +49,8 @@ public class TestRunnerService : ITestRunnerService
             ScheduledTestId = scheduledTest?.Id ?? 0,
             ExecutionTime = DateTime.UtcNow,
             Status = "Pending",
-            ErrorMessage = ""
+            ErrorMessage = "",
+            ExecutionDetails = "" 
         };
 
         if (scheduledTest != null)
@@ -112,7 +113,7 @@ public class TestRunnerService : ITestRunnerService
                 $"-projectPath=\"{projectPath}\"",
                 "-retry=0",
                 $"-testSuitePath=\"{testPath.Replace('\\', '/').Replace(".ts", "")}\"",
-                "-browserType=\"Chrome\"",
+                "-browserType=\"Chrome (headless)\"",
                 $"-executionProfile=\"{(scheduledTest?.SelectedProfile ?? "default").Replace("profiles\\", "").Replace(".glbl", "")}\"",
                 $"-apiKey=\"{_options.ApiKey}\"",
                 $"-testOpsProjectId={project.TestOpsProjectId}",

@@ -1,0 +1,45 @@
+2024-12-19 14:28:27.266 -06:00 [INF] Starting application...
+2024-12-19 14:28:27.487 -06:00 [INF] Builder created
+2024-12-19 14:28:27.489 -06:00 [INF] Successfully tested file operations in data directory at: C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\Data
+2024-12-19 14:28:27.491 -06:00 [INF] Configuration loaded
+2024-12-19 14:28:27.493 -06:00 [INF] Database context configured
+2024-12-19 14:28:27.495 -06:00 [INF] Hangfire configured successfully
+2024-12-19 14:28:27.573 -06:00 [INF] Building application...
+2024-12-19 14:28:27.703 -06:00 [FTL] Application terminated unexpectedly
+Microsoft.Data.Sqlite.SqliteException (0x80004005): SQLite Error 14: 'unable to open database file'.
+   at Microsoft.Data.Sqlite.SqliteException.ThrowExceptionForRC(Int32 rc, sqlite3 db)
+   at Microsoft.Data.Sqlite.SqliteConnectionInternal..ctor(SqliteConnectionStringBuilder connectionOptions, SqliteConnectionPool pool)
+   at Microsoft.Data.Sqlite.SqliteConnectionPool.GetConnection()
+   at Microsoft.Data.Sqlite.SqliteConnectionFactory.GetConnection(SqliteConnection outerConnection)
+   at Microsoft.Data.Sqlite.SqliteConnection.Open()
+   at Hangfire.SQLite.SQLiteStorage.CreateAndOpenConnection(Boolean isWriteLock)
+   at Hangfire.SQLite.SQLiteStorage.UseConnection[T](Func`2 func, Boolean isWriteLock)
+   at Hangfire.SQLite.SQLiteStorage.UseConnection(Action`1 action, Boolean isWriteLock)
+   at Hangfire.SQLite.SQLiteStorage.Initialize()
+   at Hangfire.SQLite.SQLiteStorage..ctor(String nameOrConnectionString, SQLiteStorageOptions options)
+   at Hangfire.SQLite.SQLiteStorageExtensions.UseSQLiteStorage(IGlobalConfiguration configuration, String nameOrConnectionString, SQLiteStorageOptions options)
+   at KatalonScheduler.Program.<>c__DisplayClass0_0.<Main>b__1(IServiceProvider sp, IGlobalConfiguration config) in C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\Program.cs:line 88
+   at Hangfire.HangfireServiceCollectionExtensions.<>c__DisplayClass1_0.<AddHangfire>b__14(IServiceProvider serviceProvider) in C:\projects\hangfire-525\src\Hangfire.NetCore\HangfireServiceCollectionExtensions.cs:line 103
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSiteMain(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitRootCache(ServiceCallSite callSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteVisitor`2.VisitCallSite(ServiceCallSite callSite, TArgument argument)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.Resolve(ServiceCallSite callSite, ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+   at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(Type serviceType)
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService[T](IServiceProvider provider)
+   at Hangfire.HangfireServiceCollectionExtensions.ThrowIfNotConfigured(IServiceProvider serviceProvider) in C:\projects\hangfire-525\src\Hangfire.NetCore\HangfireServiceCollectionExtensions.cs:line 307
+   at Hangfire.HangfireApplicationBuilderExtensions.UseHangfireDashboard(IApplicationBuilder app, String pathMatch, DashboardOptions options, JobStorage storage) in C:\projects\hangfire-525\src\Hangfire.AspNetCore\HangfireApplicationBuilderExtensions.cs:line 44
+   at KatalonScheduler.Program.Main(String[] args) in C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\Program.cs:line 133
+2024-12-19 14:29:43.718 -06:00 [INF] Starting application...
+2024-12-19 14:29:43.930 -06:00 [INF] Builder created
+2024-12-19 14:29:43.932 -06:00 [INF] Successfully tested file operations in data directory at: C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\Data
+2024-12-19 14:29:43.934 -06:00 [INF] Configuration loaded
+2024-12-19 14:29:43.935 -06:00 [INF] Database context configured
+2024-12-19 14:29:43.939 -06:00 [INF] Successfully verified write permissions to Data directory
+2024-12-19 14:29:43.939 -06:00 [INF] Configuring Hangfire with database path: C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\Data\KatalonScheduler.Hangfire.db
+2024-12-19 14:29:43.940 -06:00 [INF] Hangfire configured successfully
+2024-12-19 14:29:44.017 -06:00 [INF] Building application...
+2024-12-19 14:29:44.115 -06:00 [INF] Hangfire connection string: Data Source=C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\Data\KatalonScheduler.Hangfire.db;Mode=ReadWriteCreate;
+2024-12-19 14:29:44.357 -06:00 [INF] Application configured, starting...

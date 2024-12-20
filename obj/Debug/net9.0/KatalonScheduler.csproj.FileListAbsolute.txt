@@ -1,6 +1,5 @@
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\appsettings.Development.json
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\appsettings.json
-C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\appsettings.Production.json
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler.staticwebassets.runtime.json
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler.staticwebassets.endpoints.json
 C:\Users\Cwein\source\NewCVCS\KatalonScheduler\KatalonScheduler\bin\Debug\net9.0\KatalonScheduler.exe

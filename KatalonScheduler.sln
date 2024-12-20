@@ -5,6 +5,13 @@ VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KatalonScheduler", "KatalonScheduler.csproj", "{B16542D7-1F60-4E7A-BA3C-EF3D64A93376}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deployment", "deployment", "{1D83A090-1360-4AF3-BF8B-20BE7A071563}"
+	ProjectSection(SolutionItems) = preProject
+		install-service.ps1 = install-service.ps1
+		README.md = README.md
+		setup-env.ps1 = setup-env.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
