@@ -28,6 +28,17 @@ public class TestRunnerService : ITestRunnerService
     public async Task<ExecutionResult> RunTestAsync(string projectPath, string testPath, string executionProfile, int? testOpsProjectId, CancellationToken cancellationToken = default)
     {
 
+        // checks the validity of the test suite path
+        if (!IsValidTestPath(testPath))
+        {
+            _logger.LogError("Invalid test path: {TestPath}", testPath);
+            return new ExecutionResult
+            {
+                Success = false,
+                Message = "Invalid test path"
+            };
+        }
+
         var paths = await GetRequiredPaths();
 
         var testSuite = await _context.TestSuites
@@ -35,7 +46,7 @@ public class TestRunnerService : ITestRunnerService
 
         if (testSuite == null)
         {
-            _logger.LogError("Test suite not found for path: {Path}", testPath);
+            _logger.LogError("Test suite not found for path: {Path}", SanitizeLogParam(testPath));
             return new ExecutionResult { Success = false, Message = "Test suite not found" };
         }
 
@@ -259,5 +270,20 @@ public class TestRunnerService : ITestRunnerService
             _context.ScheduledTests.Update(scheduledTest);
         }
         await _context.SaveChangesAsync();
+    }
+    
+    // all test paths must be in the specified folders
+    private bool IsValidTestPath(string testPath)
+    {
+        // TODO: make path more restrictive (depends on the environment)
+        var allowedPaths = new List<string> { 
+                "Katalon" };
+        return allowedPaths.Contains(testPath);
+    }
+
+    // sanitizes logger parameter by removing newlines
+    private string SanitizeLogParam(string message)
+    {
+        return message.Replace("\n", " ").Replace("\r", " ");
     }
 }
