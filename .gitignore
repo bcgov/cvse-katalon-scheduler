@@ -9,3 +9,5 @@ appsettings.Production.json
 /bin
 /obj
 Logs.dbappsettings.json
+/obj
+/obj/Debug
