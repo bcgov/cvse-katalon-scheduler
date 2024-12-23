@@ -31,7 +31,7 @@ public class TestRunnerService : ITestRunnerService
         // checks the validity of the test suite path
         if (!IsValidTestPath(testPath))
         {
-            _logger.LogError("Invalid test path: {TestPath}", testPath);
+            _logger.LogError("Invalid test path: {TestPath}", SanitizeLogParam(testPath));
             return new ExecutionResult
             {
                 Success = false,
