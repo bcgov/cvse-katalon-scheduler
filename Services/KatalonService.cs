@@ -28,7 +28,7 @@ public class KatalonService : IKatalonService
         _gitOptions = gitOptions.Value;
         _logger = logger;
 
-        _logger.LogInformation("KatalonService initialized with GitOptions: {@GitOptions}", _gitOptions);
+        _logger.LogInformation("KatalonService initialized with GitOptions: {@GitOptions}", SanitizeLogParam(_gitOptions.ToString()));
     }
 
 
@@ -54,7 +54,7 @@ public class KatalonService : IKatalonService
         {
             if (string.IsNullOrEmpty(project.GitUrl))
             {
-                _logger.LogError("GitUrl is missing for project {ProjectId}", project.Id);
+                _logger.LogError("GitUrl is missing for project {ProjectId}", SanitizeLogParam(project.Id.ToString()));
                 throw new InvalidOperationException("Git URL is required");
             }
 
@@ -68,13 +68,14 @@ public class KatalonService : IKatalonService
             // project.GitRepositoryPath = Path.Combine(_gitOptions.BaseRepositoryPath,
             //     string.Join("_", project.Name.Trim().Split(Path.GetInvalidFileNameChars())));
 
+            project.GitRepositoryPath = Path.GetFullPath(project.GitRepositoryPath);
             await UpdateGitRepository(project);
             var basePath = project.GitRepositoryPath;
             var testSuitesPath = Path.Combine(project.GitRepositoryPath, "Test Suites");
 
             if (!Directory.Exists(testSuitesPath))
             {
-                _logger.LogWarning("Test suites directory not found: {Path}", testSuitesPath);
+                _logger.LogWarning("Test suites directory not found: {Path}", SanitizeLogParam(testSuitesPath));
                 return (Array.Empty<TestSuite>(), Array.Empty<TestCase>());
             }
 
@@ -92,7 +93,7 @@ public class KatalonService : IKatalonService
                 })
                 .ToList();
 
-            _logger.LogInformation("Found {Count} test suites in {Path}", suites.Count, testSuitesPath);
+            _logger.LogInformation("Found {Count} test suites in {Path}", suites.Count, SanitizeLogParam(testSuitesPath));
 
             // Update existing test suites in DB
             var existingSuites = await _context.TestSuites
@@ -109,7 +110,7 @@ public class KatalonService : IKatalonService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error scanning project {ProjectId}", project.Id);
+            _logger.LogError(ex, "Error scanning project {ProjectId}", SanitizeLogParam(project.Id.ToString()));
             throw;
         }
     }
@@ -118,12 +119,20 @@ public class KatalonService : IKatalonService
     {
         try
         {
-            var gitUrl = project.GitUrl.Replace("https://", $"https://oauth2:{_gitOptions.AccessToken}@"); _logger.LogInformation("Starting git operation for project: {Name} at path: {Path}",
-               project.Name, project.GitRepositoryPath);
+            var gitUrl = project.GitUrl.Replace("https://", $"https://oauth2:{_gitOptions.AccessToken}@");
+            
+            if (!Uri.TryCreate(gitUrl, UriKind.Absolute, out var validatedGitUrl) || (validatedGitUrl.Scheme != Uri.UriSchemeHttp && validatedGitUrl.Scheme != Uri.UriSchemeHttps))
+            {
+                _logger.LogError("Invalid Git URL: {GitUrl}", SanitizeLogParam(project.GitUrl));
+                throw new InvalidOperationException("Invalid Git URL");
+            }
+            _logger.LogInformation("Starting git operation for project: {Name} at path: {Path}",
+                SanitizeLogParam(project.Name), SanitizeLogParam(project.GitRepositoryPath));
+
             if (!Directory.Exists(project.GitRepositoryPath))
             {
                 _logger.LogInformation("Repository directory not found, cloning from: {GitUrl} to {Path}",
-                    project.GitUrl, project.GitRepositoryPath);
+                    SanitizeLogParam(project.GitUrl), SanitizeLogParam(project.GitRepositoryPath));
 
                 var cloneProcess = new Process
                 {
@@ -148,7 +157,7 @@ public class KatalonService : IKatalonService
                     {
                         FileName = "git",
                         Arguments = "pull",
-                        WorkingDirectory = project.GitRepositoryPath,
+                        WorkingDirectory = Path.GetFullPath(project.GitRepositoryPath),
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
@@ -160,10 +169,11 @@ public class KatalonService : IKatalonService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Git operation failed for project: {Name}", project.Name);
+            _logger.LogError(ex, "Git operation failed for project: {Name}", SanitizeLogParam(project.Name));
             throw;
         }
     }
+
     private async Task RunGitCommand(Process process)
     {
         try
@@ -177,8 +187,8 @@ public class KatalonService : IKatalonService
             process.StartInfo.FileName = adminSettings.GitExecutablePath;
 
             _logger.LogInformation("Running Git command: {Command} {Args}",
-                process.StartInfo.FileName,
-                process.StartInfo.Arguments);
+                SanitizeLogParam(process.StartInfo.FileName),
+                SanitizeLogParam(process.StartInfo.Arguments));
 
             process.Start();
             var output = await process.StandardOutput.ReadToEndAsync();
@@ -188,11 +198,11 @@ public class KatalonService : IKatalonService
             if (process.ExitCode != 0)
             {
                 _logger.LogError("Git command failed with exit code {Code}. Error: {Error}",
-                    process.ExitCode, error);
+                    process.ExitCode, SanitizeLogParam(error));
                 throw new InvalidOperationException($"Git command failed: {error}");
             }
 
-            _logger.LogInformation("Git command completed successfully. Output: {Output}", output);
+            _logger.LogInformation("Git command completed successfully. Output: {Output}", SanitizeLogParam(output));
         }
         catch (Exception ex)
         {
@@ -207,7 +217,7 @@ public class KatalonService : IKatalonService
         var testCasesPath = Path.Combine(Path.GetDirectoryName(project.GitRepositoryPath)!, "Test Cases");
         if (!Directory.Exists(testCasesPath))
         {
-            _logger.LogWarning("Test Cases directory not found for project: {Path}", testCasesPath);
+            _logger.LogWarning("Test Cases directory not found for project: {Path}", SanitizeLogParam(testCasesPath));
             return;
         }
 
@@ -230,6 +240,7 @@ public class KatalonService : IKatalonService
 
         await _context.SaveChangesAsync();
     }
+
     public async Task<IEnumerable<TestCase>> GetTestCasesAsync(int projectId)
     {
         try
@@ -240,14 +251,14 @@ public class KatalonService : IKatalonService
 
             if (project == null)
             {
-                _logger.LogWarning("Project not found: {ProjectId}", projectId);
+                _logger.LogWarning("Project not found: {ProjectId}", SanitizeLogParam(projectId.ToString()));
                 return Enumerable.Empty<TestCase>();
             }
 
             // Check if project path still exists
             if (!await ValidateProjectAsync(project.GitRepositoryPath))
             {
-                _logger.LogWarning("Project path no longer valid: {Path}", project.GitRepositoryPath);
+                _logger.LogWarning("Project path no longer valid: {Path}", SanitizeLogParam(project.GitRepositoryPath));
                 return Enumerable.Empty<TestCase>();
             }
 
@@ -276,7 +287,7 @@ public class KatalonService : IKatalonService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting test cases for project {ProjectId}", projectId);
+            _logger.LogError(ex, "Error getting test cases for project {ProjectId}", SanitizeLogParam(projectId.ToString()));
             return Enumerable.Empty<TestCase>();
         }
     }
@@ -293,7 +304,7 @@ public class KatalonService : IKatalonService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating project at {Path}", projectPath);
+            _logger.LogError(ex, "Error validating project at {Path}", SanitizeLogParam(projectPath));
             return false;
         }
     }
@@ -315,5 +326,10 @@ public class KatalonService : IKatalonService
 
         // Delegate to TestRunnerService in the next implementation
         throw new NotImplementedException();
+    }
+
+    private string SanitizeLogParam(string message)
+    {
+        return message.Replace("\n", " ").Replace("\r", " ");
     }
 }

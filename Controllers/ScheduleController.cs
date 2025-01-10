@@ -264,7 +264,7 @@ public class ScheduleController : Controller
             if (testSuite == null)
             {
                 _logger.LogWarning("Test suite not found. SelectedTestSuite: {suite}, ProjectId: {projectId}",
-                    model.SelectedTestSuite, model.ProjectId);
+                    SanitizeLogParam(model.SelectedTestSuite), model.ProjectId);
                 return BadRequest("Test suite not found");
             }
 
@@ -522,7 +522,7 @@ public class ScheduleController : Controller
 
             if (scheduledTest == null)
             {
-                _logger.LogWarning("Scheduled test not found for jobId: {JobId}", jobId);
+                _logger.LogWarning("Scheduled test not found for jobId: {JobId}", SanitizeLogParam(jobId));
                 return NotFound();
             }
 
@@ -544,7 +544,7 @@ public class ScheduleController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting schedule {JobId}", jobId);
+            _logger.LogError(ex, "Error deleting schedule {JobId}", SanitizeLogParam(jobId));
             return StatusCode(500, "Error deleting schedule");
         }
     }
@@ -654,7 +654,7 @@ public class ScheduleController : Controller
         {
             Name = SanitizeProjectName(projectVM.Name),
             GitUrl = projectVM.GitUrl,
-            GitRepositoryPath = Path.Combine(baseRepoPath, SanitizeProjectName(projectVM.Name)),
+            GitRepositoryPath = ValidateAndCombinePath(baseRepoPath, SanitizeProjectName(projectVM.Name)),
             OrganizationId = projectVM.OrganizationId,
             TestOpsProjectId = projectVM.TestOpsProjectId,
             LastScanned = DateTime.UtcNow
@@ -741,8 +741,24 @@ public class ScheduleController : Controller
     }
     private string SanitizeProjectName(string name)
     {
-        // Trim spaces and replace invalid characters
-        return string.Join("_", name.Trim().Split(Path.GetInvalidFileNameChars()));
+        // Allow only alphanumeric characters and replace others with underscores
+        var sanitized = string.Join("_", name.Trim().Split(Path.GetInvalidFileNameChars()));
+        // Check for path traversal sequences and path separators
+        if (sanitized.Contains("..") || sanitized.Contains("/") || sanitized.Contains("\\"))
+        {
+            throw new ArgumentException("Invalid project name");
+        }
+        return sanitized;
+    }
+
+    private string ValidateAndCombinePath(string basePath, string relativePath)
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(basePath, relativePath));
+        if (!fullPath.StartsWith(basePath))
+        {
+            throw new InvalidOperationException("Invalid path");
+        }
+        return fullPath;
     }
 
 [HttpPost]
@@ -835,6 +851,10 @@ public async Task<IActionResult> SyncProject(int id)
             _logger.LogError(ex, "Error getting profiles for project {Id}", id);
             return BadRequest(new { error = "Error accessing project profiles" });
         }
+    }
+    private string SanitizeLogParam(string message)
+    {
+        return message.Replace("\n", " ").Replace("\r", " ");
     }
 
 }
